@@ -5,7 +5,7 @@ Handles writing breach data, updates, tags, and sources to the database.
 """
 
 import logging
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Dict, List, Optional
 from supabase import create_client, Client
 import uuid
@@ -37,15 +37,15 @@ class DatabaseWriter:
             List of breach dictionaries
         """
         try:
-            # Calculate cutoff date
-            cutoff_date = date.today().isoformat()
+            # Calculate cutoff date in Python (Supabase REST API can't interpret PostgreSQL functions)
+            cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
 
             # Query breaches from last N days
             response = (
                 self.client
                 .from_('breaches')
                 .select('id, company, industry, country, discovery_date, summary, created_at')
-                .gte('created_at', f'now() - interval \'{days} days\'')
+                .gte('created_at', cutoff_date)
                 .order('created_at', desc=True)
                 .limit(100)  # Limit to 100 most recent
                 .execute()
@@ -342,12 +342,15 @@ class DatabaseWriter:
             Breach dict if found, None otherwise
         """
         try:
+            # Calculate cutoff date in Python (Supabase REST API can't interpret PostgreSQL functions)
+            cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
+
             response = (
                 self.client
                 .from_('breaches')
                 .select('*')
                 .ilike('company', f'%{company_name}%')
-                .gte('created_at', f'now() - interval \'{days} days\'')
+                .gte('created_at', cutoff_date)
                 .limit(1)
                 .execute()
             )

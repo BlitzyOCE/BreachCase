@@ -7,6 +7,7 @@ Handles data extraction from articles and update detection.
 import json
 import logging
 import time
+from datetime import date
 from typing import Dict, List, Optional, Any
 from openai import OpenAI
 import backoff
@@ -17,6 +18,8 @@ from config import (
     DEEPSEEK_MODEL,
     DEEPSEEK_TIMEOUT,
     DEEPSEEK_MAX_TOKENS,
+    CLASSIFICATION_PROMPT,
+    CLASSIFICATION_MAX_TOKENS,
     EXTRACTION_PROMPT,
     UPDATE_DETECTION_PROMPT,
     MAX_RETRIES
@@ -111,6 +114,91 @@ class AIProcessor:
             logger.debug(f"Response content: {response[:500]}")
             return None
 
+    def classify_article(self, article: Dict) -> Dict:
+        """
+        Quick classification to determine if article is about a data breach.
+
+        This is Stage 1 of the two-stage AI approach - a fast, cheap filter
+        that runs before the expensive extraction process.
+
+        Args:
+            article: Article dict with 'title', 'summary'
+
+        Returns:
+            Classification result dict with:
+                - is_breach: bool
+                - confidence: float (0.0 to 1.0)
+                - reasoning: str
+        """
+        logger.info(f"Classifying article: {article['title'][:80]}...")
+
+        # Format the classification prompt
+        prompt = CLASSIFICATION_PROMPT.format(
+            title=article['title'],
+            summary=article.get('summary', '')[:500]  # Limit summary length for classification
+        )
+
+        messages = [
+            {
+                "role": "system",
+                "content": "You are a cybersecurity analyst expert at identifying data breach incidents. Always respond with valid JSON."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+
+        try:
+            # Use lower max_tokens for classification (cheaper/faster)
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=0.1,  # Low temperature for consistent classification
+                max_tokens=CLASSIFICATION_MAX_TOKENS
+            )
+
+            content = response.choices[0].message.content
+            classification = self.extract_json_from_response(content)
+
+            if not classification:
+                logger.error(f"Failed to parse classification response")
+                # Default to treating as non-breach on parsing failure
+                return {
+                    'is_breach': False,
+                    'confidence': 0.0,
+                    'reasoning': 'Failed to parse AI classification response'
+                }
+
+            # Validate classification fields
+            if 'is_breach' not in classification:
+                classification['is_breach'] = False
+            if 'confidence' not in classification:
+                classification['confidence'] = 0.5
+            if 'reasoning' not in classification:
+                classification['reasoning'] = 'No reasoning provided'
+
+            # Ensure confidence is a float between 0 and 1
+            try:
+                classification['confidence'] = float(classification['confidence'])
+                classification['confidence'] = max(0.0, min(1.0, classification['confidence']))
+            except (ValueError, TypeError):
+                classification['confidence'] = 0.5
+
+            logger.info(f"Classification: is_breach={classification['is_breach']}, "
+                       f"confidence={classification['confidence']:.2%}")
+
+            return classification
+
+        except Exception as e:
+            logger.error(f"Error during classification: {e}")
+            # Default to treating as non-breach on error (conservative approach)
+            return {
+                'is_breach': False,
+                'confidence': 0.0,
+                'reasoning': f'Classification error: {str(e)}'
+            }
+
     def extract_breach_data(self, article: Dict) -> Optional[Dict]:
         """
         Extract structured breach data from an article using AI.
@@ -123,11 +211,16 @@ class AIProcessor:
         """
         logger.info(f"Extracting breach data from: {article['title'][:80]}...")
 
+        # Get current date for relative date calculations
+        today = date.today()
+
         # Format the extraction prompt
         prompt = EXTRACTION_PROMPT.format(
             title=article['title'],
             url=article['url'],
-            summary=article['summary']
+            summary=article['summary'],
+            today=today.isoformat(),
+            year=today.year
         )
 
         messages = [

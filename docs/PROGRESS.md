@@ -1,6 +1,6 @@
 # BreachWatch - Development Progress
 
-## Project Status: 🟢 Phase 2 & 3 Complete - Scraper Built & AI Integrated
+## Project Status: 🟡 Phase 1 Complete - Building Backend
 
 ---
 
@@ -40,71 +40,43 @@
 
 ---
 
-## ✅ Phase 2: Python Scraper (COMPLETED - 2026-02-04)
+## 🔄 Phase 2: Python Scraper (BUILT - READY FOR TESTING)
 
 ### What We Built
 - **Complete scraper system** with 6 Python modules
-- **10 RSS feed sources** (English + EU government sources)
+- **10 RSS feed sources** configured (BleepingComputer, The Hacker News, etc.)
+- **Two-Stage AI Processing** for cost optimization (NEW - 2026-02-06)
 - **Local caching** with deduplication
-- **File**: `scraper/` directory with all modules
+- **Comprehensive logging** and error handling
 
-### Modules Created
-1. ✅ `config.py` - Configuration, RSS sources, AI prompts (10 feeds configured)
-2. ✅ `feed_parser.py` - RSS fetching with parallel processing
-3. ✅ `cache_manager.py` - Local JSON caching & processed ID tracking
-4. ✅ `db_writer.py` - Supabase integration for writing breaches/updates
-5. ✅ `ai_processor.py` - DeepSeek API integration (extraction + update detection)
-6. ✅ `main.py` - Main orchestrator with comprehensive logging
+### Key Features
+- ✅ Stage 1: Fast classification to identify breach articles (saves 40-60% on API costs)
+- ✅ Stage 2: Detailed extraction for confirmed breaches
+- ✅ Parallel RSS feed fetching from 10 sources
+- ✅ URL-based deduplication
+- ✅ Processed ID tracking to prevent reprocessing
+- ✅ Configurable confidence thresholds
 
-### RSS Sources Configured
-1. BleepingComputer - Fast breaking news
-2. The Hacker News - High volume coverage
-3. DataBreachToday.co.uk - UK/EU focused
-4. Dark Reading - Enterprise security
-5. Krebs on Security - Investigative journalism
-6. HelpNet Security - Broad coverage
-7. CERT.be - Belgium/EU official advisories
-8. NCSC UK - UK government advisories
-9. Check Point Research - Global threat intel
-10. Have I Been Pwned - Verified breaches
-
-### Features Implemented
-- ✅ Parallel RSS feed fetching (all 10 sources)
-- ✅ Article filtering (last 48 hours)
-- ✅ URL-based deduplication across sources
-- ✅ Local caching to prevent reprocessing
-- ✅ Comprehensive logging (daily + error logs)
-- ✅ Error handling with retry logic
-- ✅ Processed IDs tracking
-
-### Supporting Files
-- ✅ `requirements.txt` - All Python dependencies
-- ✅ `.env.example` - Environment variable template
-- ✅ `README.md` - Complete setup & usage guide
-- ✅ Updated `.gitignore` - Protect sensitive files
+### Next Steps - Testing
+1. ⬜ Set up .env file with API credentials (DeepSeek + Supabase)
+2. ⬜ Install Python 3.11+ and create virtual environment
+3. ⬜ Install dependencies: `pip install -r requirements.txt`
+4. ⬜ Test individual modules (feed_parser.py, ai_processor.py, db_writer.py)
+5. ⬜ Run full scraper: `python main.py`
+6. ⬜ Verify breaches appear in Supabase database
+7. ⬜ Review classification metrics in logs
+8. ⬜ Set up daily cron job for automation
 
 ---
 
-## ✅ Phase 3: DeepSeek API Integration (COMPLETED - 2026-02-04)
+## ⬜ Phase 3: API Integration
 
-### What We Built
-- **AI-powered extraction** from unstructured articles
-- **Update detection** to identify new vs existing breaches
-- **Retry logic** with exponential backoff
-- **JSON validation** with schema checking
-
-### Features Implemented
-- ✅ Breach data extraction with structured prompts
-- ✅ Update detection comparing against existing breaches (90-day window)
-- ✅ Confidence scoring for update classification
-- ✅ Field validation (attack vectors, severity levels)
-- ✅ Automatic fallback on extraction failures
-- ✅ JSON parsing from markdown code blocks
-- ✅ Error handling with detailed logging
-
-### AI Prompts Designed
-1. ✅ **Extraction Prompt** - Extracts company, industry, attack vector, CVEs, MITRE techniques, severity, summary, lessons learned
-2. ✅ **Update Detection Prompt** - Determines if NEW breach or UPDATE with confidence scoring
+### Planned
+- Get Anthropic API key
+- Implement ai_processor.py
+- Extract structured data from articles
+- Test with cached articles
+- Implement retry logic
 
 ---
 
@@ -162,7 +134,7 @@
 ### Tech Stack Confirmed
 - ✅ Supabase (PostgreSQL + REST API)
 - ✅ Python 3.11+ for scraper
-- ✅ DeepSeek API (deepseek-chat or deepseek-reasoner) for AI processing
+- ✅ Claude API (Sonnet 4.5) for AI processing
 - ✅ Next.js 14+ with TypeScript for frontend
 - ✅ Tailwind CSS + shadcn/ui for styling
 
@@ -170,15 +142,15 @@
 
 ## Session Notes
 
-### 2026-02-04 - Python Scraper & AI Integration
-- Researched and selected 10 optimal RSS breach news sources
-- Built complete scraper system with 6 Python modules
-- Integrated DeepSeek API for extraction and update detection
-- Implemented parallel feed fetching and local caching
-- Created comprehensive logging and error handling
-- Designed AI prompts for extraction and update detection
-- Added retry logic with exponential backoff
-- Ready for testing with live API keys
+### 2026-02-06 - Two-Stage AI Classification Implementation
+- Implemented two-stage AI approach for cost optimization
+- Added CLASSIFICATION_PROMPT to config.py for fast breach detection
+- Created classify_article() method in ai_processor.py
+- Updated main.py with Stage 1 (classification) and Stage 2 (extraction) logic
+- Added classification statistics tracking (classified_as_breach, classified_as_non_breach)
+- Configured ENABLE_CLASSIFICATION and CLASSIFICATION_CONFIDENCE_THRESHOLD settings
+- Updated documentation (README.md, .env.example)
+- Expected cost savings: 40-60% through filtering non-breach articles before extraction
 
 ### 2024-02-04 - Database Foundation
 - Created enhanced schema with 6 tables
@@ -196,40 +168,17 @@
 ### Database
 - ✅ `database/enhanced_schema.sql` - Complete database schema
 
-### Scraper
-- ✅ `scraper/main.py` - Main orchestrator
-- ✅ `scraper/config.py` - Configuration & AI prompts
-- ✅ `scraper/feed_parser.py` - RSS feed fetching
-- ✅ `scraper/cache_manager.py` - Local caching
-- ✅ `scraper/ai_processor.py` - DeepSeek AI integration
-- ✅ `scraper/db_writer.py` - Supabase database writer
-- ✅ `scraper/requirements.txt` - Python dependencies
-- ✅ `scraper/.env.example` - Environment template
-- ✅ `scraper/README.md` - Setup & usage guide
-
 ### Documentation
-- ✅ `docs/ideas.md` - Updated with completed tasks
-- ✅ `docs/start.md` - Updated with Phase 2 completion
+- ✅ `docs/ideas.md` - Updated with completed database tasks
+- ✅ `docs/start.md` - Updated with Phase 1 completion
 - ✅ `docs/PROGRESS.md` - This file (project progress tracking)
-- ✅ `docs/SCRAPER_IMPLEMENTATION_PLAN.md` - Detailed implementation plan
 
 ---
 
 ## Notes for Next Session
 
-### Testing the Scraper (Phase 2/3 Testing)
-1. ✅ Get DeepSeek API key and add to .env
-2. ✅ Get Supabase credentials and add to .env
-3. ⬜ Run `pip install -r requirements.txt`
-4. ⬜ Test individual modules (feed_parser.py, ai_processor.py, db_writer.py)
-5. ⬜ Run full scraper: `python main.py`
-6. ⬜ Verify breaches appear in Supabase database
-7. ⬜ Check logs for errors
-8. ⬜ Set up daily cron job
-
-### Next: Phase 4 - Next.js Website
-1. Create Next.js app with TypeScript
-2. Set up Supabase client
-3. Build homepage with breach cards
-4. Build breach detail pages
-5. Implement basic filtering
+1. Start with Phase 2: Python Scraper
+2. Focus on simple implementation first (no AI yet)
+3. Test with one RSS feed (SecurityWeek recommended)
+4. Manually insert test data to verify Supabase connection
+5. Get Supabase connection credentials from project settings

@@ -1,4 +1,4 @@
-
+-- This SQL is used to create the database for the first time
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 

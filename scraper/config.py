@@ -79,7 +79,7 @@ DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
 DEEPSEEK_BASE_URL = os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com/v1')
 DEEPSEEK_MODEL = os.getenv('DEEPSEEK_MODEL', 'deepseek-chat')
 DEEPSEEK_TIMEOUT = int(os.getenv('DEEPSEEK_TIMEOUT', '60'))  # seconds
-DEEPSEEK_MAX_TOKENS = int(os.getenv('DEEPSEEK_MAX_TOKENS', '4096'))
+DEEPSEEK_MAX_TOKENS = int(os.getenv('DEEPSEEK_MAX_TOKENS', '8192'))
 
 # Supabase Configuration
 SUPABASE_URL = os.getenv('SUPABASE_URL')
@@ -97,20 +97,52 @@ LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 # File Paths
 PROCESSED_IDS_FILE = CACHE_DIR / "processed_ids.txt"
 
-# AI Extraction Prompt
+# AI Classification Prompt (Stage 1: Quick filter)
+CLASSIFICATION_PROMPT = """You are a cybersecurity analyst determining if an article is about a DATA BREACH incident.
+
+Article Title: {title}
+Article Summary: {summary}
+
+A DATA BREACH is an incident where:
+- Unauthorized access to sensitive data occurred
+- Data was stolen, leaked, exposed, or compromised
+- A specific organization/company was victimized
+- Personal information, credentials, or confidential data was affected
+
+NOT a data breach:
+- Vulnerability disclosures (CVEs without confirmed exploitation)
+- Security tool/product announcements
+- Threat intelligence reports without specific victim
+- Malware analysis without confirmed data theft
+- Security best practices or advice articles
+- Policy/compliance updates
+- Ransomware attacks WITHOUT data exfiltration mentioned
+
+Return JSON:
+{{
+  "is_breach": true or false,
+  "confidence": 0.0 to 1.0 (confidence in your classification),
+  "reasoning": "Brief 1-sentence explanation of your decision"
+}}
+
+Be strict: Only classify as breach if there's clear evidence of data compromise.
+"""
+
+# AI Extraction Prompt (Stage 2: Detailed extraction)
 EXTRACTION_PROMPT = """You are a cybersecurity analyst extracting structured breach data from news articles.
 
 Article Title: {title}
 Article URL: {url}
 Article Summary: {summary}
+Today's Date: {today}
 
-Extract the following information in JSON format. Be precise and only extract information that is explicitly stated in the article:
+Extract the following information in JSON format:
 
 {{
   "company": "Exact company name mentioned (null if not specified)",
   "industry": "Industry sector (e.g., healthcare, finance, retail, technology, government, education, null if unknown)",
-  "country": "Country or region (null if not specified)",
-  "discovery_date": "Date breach was discovered in YYYY-MM-DD format (null if not specified)",
+  "country": "Country where the breached organization is headquartered or operates (ISO country name)",
+  "discovery_date": "Date breach was discovered or disclosed in YYYY-MM-DD format",
   "records_affected": number of records affected as integer (null if not specified),
   "breach_method": "Brief description of how the breach occurred (null if not specified)",
   "attack_vector": "One of: phishing|ransomware|api_exploit|insider|supply_chain|misconfiguration|malware|ddos|other (null if unclear)",
@@ -118,15 +150,27 @@ Extract the following information in JSON format. Be precise and only extract in
   "severity": "One of: low|medium|high|critical based on impact (null if cannot determine)",
   "cve_references": ["Array of CVE IDs mentioned, e.g., CVE-2024-1234"],
   "mitre_attack_techniques": ["Array of MITRE ATT&CK technique IDs if mentioned, e.g., T1078"],
-  "summary": "2-3 sentence executive summary of the breach",
+  "summary": "<300 words executive summary of the breach",
   "lessons_learned": "Brief analysis of what security controls failed and recommendations (null if cannot determine)"
 }}
 
-IMPORTANT:
-- Use null for any field where information is not explicitly mentioned
-- Do not speculate or infer information not stated in the article
+EXTRACTION GUIDELINES:
+
+Country:
+- Extract from explicit mentions ("Spain's Ministry", "Italian university", "UK-based company")
+- For well-known companies, use their headquarters country (e.g., Substack -> United States, Betterment -> United States)
+- Use null only if the company is unknown and no country context is provided
+
+Discovery Date:
+- If exact date given: use it directly (e.g., "January 15, 2026" -> "2026-01-15")
+- If only month and year given: use 15th as default (e.g., "October 2025" -> "2025-10-15")
+- If only month given: assume current year {year} (e.g., "in January" -> "{year}-01-15")
+- If relative time given: calculate from today's date (e.g., "last month" from {today})
+- Use null only if no time reference exists at all
+
+General:
 - For records_affected, only include if a specific number is mentioned
-- Be factual and concise
+- Be factual but allow reasonable inference from context for country and dates
 - Ensure valid JSON format
 """
 
@@ -156,14 +200,18 @@ Return JSON:
 
 Guidelines:
 - If the article mentions the same company AND similar timeframe as an existing breach, it's likely an update
-- Updates often contain keywords like: lawsuit, fine, settlement, investigation, charges, remediation
 - If in doubt, default to is_update: false (treat as new breach)
-- Only set is_update: true if you are confident (confidence > 0.7)
+- Only set is_update: true if you are confident (confidence > 0.6)
 """
 
 # Validation settings
 MIN_SUMMARY_LENGTH = 50  # Minimum characters for summary
 MAX_SUMMARY_LENGTH = 500  # Maximum characters for summary
+
+# Classification settings (Two-Stage AI)
+ENABLE_CLASSIFICATION = os.getenv('ENABLE_CLASSIFICATION', 'True').lower() in ('true', '1', 'yes')
+CLASSIFICATION_CONFIDENCE_THRESHOLD = float(os.getenv('CLASSIFICATION_CONFIDENCE_THRESHOLD', '0.6'))
+CLASSIFICATION_MAX_TOKENS = int(os.getenv('CLASSIFICATION_MAX_TOKENS', '300'))
 
 # Rate limiting
 REQUESTS_PER_MINUTE = 60

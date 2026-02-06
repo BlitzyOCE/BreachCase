@@ -16,6 +16,17 @@ from config import RSS_SOURCES, ARTICLE_LOOKBACK_HOURS, REQUEST_TIMEOUT, MAX_RET
 
 logger = logging.getLogger(__name__)
 
+# HTTP headers to avoid being blocked by bot detection
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'Accept': 'application/rss+xml, application/xml, text/xml, application/atom+xml, */*',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'DNT': '1',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1'
+}
+
 
 def parse_date(date_string: str) -> Optional[datetime]:
     """
@@ -56,8 +67,8 @@ def fetch_feed(source_key: str, source_config: Dict) -> List[Dict]:
     logger.info(f"Fetching feed: {source_name} ({url})")
 
     try:
-        # Fetch the RSS feed with timeout
-        response = requests.get(url, timeout=REQUEST_TIMEOUT)
+        # Fetch the RSS feed with timeout and proper headers to avoid blocking
+        response = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
 
         # Parse the feed

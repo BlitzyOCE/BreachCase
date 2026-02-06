@@ -1,49 +1,60 @@
-# Python cache
+# ===========================================
+# Python
+# ===========================================
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
 .Python
 venv/
 env/
+ENV/
+*.egg
 *.egg-info/
+.eggs/
+*.manifest
+*.spec
 
-# Scraper cache (IMPORTANT - don't push to GitHub)
-scraper/cache/
-scraper/logs/
-*.json
-!scraper/cache/.gitkeep
-
-# Processed IDs tracking
-scraper/processed_ids.txt
-
-# Node modules
-node_modules/
-.next/
-out/
-
-# Environment variables
+# ===========================================
+# Environment & Secrets
+# ===========================================
 .env
 .env.local
 .env.*.local
+# Note: .env.example should be committed (it's a template)
 
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
+# ===========================================
+# Scraper Runtime Data
+# ===========================================
+scraper/cache/
+scraper/logs/
+scraper/audit_export/
 
-# OS files
-.DS_Store
-Thumbs.db
+# ===========================================
+# IDE & Editor
+# ===========================================
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# Build outputs
-dist/
-build/
+# ===========================================
+# OS Generated
+# ===========================================
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.stackdump
 
-# Claude Code and project planning files
-.claude/
-docs/ideas.md
-docs/product.md
-docs/start.md
+# ===========================================
+# Claude Code (keep commands/, ignore rest)
+# ===========================================
+.claude/*
+!.claude/commands/
+
+# ===========================================
+# Documentation (optional - uncomment to ignore drafts)
+# ===========================================
+# docs/ideas.md
+# docs/start.md
