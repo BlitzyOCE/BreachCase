@@ -29,7 +29,7 @@ export default async function BreachPage({ params }: BreachPageProps) {
   const { id } = await params;
   const [breach, relatedBreaches] = await Promise.all([
     getBreachById(id),
-    getRelatedBreaches(id, 3),
+    getRelatedBreaches(id, 3).catch(() => []),
   ]);
 
   if (!breach) notFound();
