@@ -14,8 +14,8 @@ export function BreachCard({ breach }: BreachCardProps) {
     <Link href={`/breach/${breach.id}`}>
       <Card className="h-full transition-shadow hover:shadow-md">
         <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
+          <div className="flex items-start justify-between gap-2 overflow-hidden">
+            <div className="min-w-0 flex-1">
               <h3 className="truncate text-lg font-semibold">
                 {breach.company}
               </h3>
