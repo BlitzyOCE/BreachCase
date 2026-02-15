@@ -133,7 +133,7 @@ Today's Date: {today}
 Extract the following information in JSON format:
 
 {{
-  "company": "Exact company name mentioned (null if not specified)",
+  "company": "Name of the breached or affected organization. Infer from context if not explicitly stated (e.g., 'Microsoft' for a Microsoft Outlook add-in attack, 'US Government' for a campaign targeting US federal agencies). Use null ONLY if no organization can reasonably be identified.",
   "title": "Concise, descriptive breach headline (e.g., 'Qantas 2025 Customer Data Breach', 'Instagram 17M Profile Scraping Incident'). Must include company name, year, and nature of breach. Max 80 chars.",
   "industry": "Industry sector (e.g., healthcare, finance, retail, technology, government, education, null if unknown)",
   "country": "Country where the breached organization is headquartered or operates (ISO country name, null if unknown)",

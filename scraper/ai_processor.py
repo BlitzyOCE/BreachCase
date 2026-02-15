@@ -273,6 +273,11 @@ class AIProcessor:
         Returns:
             True if validation passes
         """
+        # Check for company (required - DB NOT NULL constraint)
+        if not data.get('company'):
+            logger.warning("Extraction missing required field: company")
+            return False
+
         # Check for summary (required)
         if not data.get('summary'):
             logger.warning("Extraction missing required field: summary")
