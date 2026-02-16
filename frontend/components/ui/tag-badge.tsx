@@ -10,7 +10,7 @@ interface TagBadgeProps {
 
 export function TagBadge({ tagType, tagValue, clickable = true }: TagBadgeProps) {
   const badge = (
-    <Badge variant="outline" className="text-xs">
+    <Badge variant="outline" className="text-xs capitalize">
       {tagValue}
     </Badge>
   );

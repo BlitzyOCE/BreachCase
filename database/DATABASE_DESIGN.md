@@ -47,7 +47,6 @@ Stores core information about each data breach incident. This is the central tab
 - `attack_vector` - Standardized attack type (phishing, ransomware, etc.)
 - `data_compromised` - JSONB array of data types exposed
 - `severity` - Calculated severity (low/medium/high/critical)
-- `status` - Current state (investigating/confirmed/resolved)
 - `threat_actor` - Attribution if known
 - `cve_references` - JSONB array of CVE IDs (e.g., ["CVE-2024-1234"])
 - `mitre_techniques` - JSONB array of MITRE ATT&CK techniques (e.g., ["T1078"])

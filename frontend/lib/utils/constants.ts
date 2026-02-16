@@ -1,4 +1,4 @@
-import type { AttackVector, Severity, Status, UpdateType, TagType } from "@/types/database";
+import type { AttackVector, Severity, UpdateType, TagType } from "@/types/database";
 
 export const SEVERITY_COLORS: Record<Severity, string> = {
   critical: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
@@ -12,18 +12,6 @@ export const SEVERITY_ORDER: Record<Severity, number> = {
   high: 3,
   medium: 2,
   low: 1,
-};
-
-export const STATUS_COLORS: Record<Status, string> = {
-  investigating: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-  confirmed: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
-  resolved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-};
-
-export const STATUS_LABELS: Record<Status, string> = {
-  investigating: "Investigating",
-  confirmed: "Confirmed",
-  resolved: "Resolved",
 };
 
 export const ATTACK_VECTOR_LABELS: Record<AttackVector, string> = {

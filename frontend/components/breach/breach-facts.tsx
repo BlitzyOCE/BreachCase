@@ -6,10 +6,8 @@ import {
   Database,
   Swords,
   UserX,
-  Activity,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { formatDate, formatRecordsAffected } from "@/lib/utils/formatting";
 import { ATTACK_VECTOR_LABELS } from "@/lib/utils/constants";
 import type { Breach } from "@/types/database";
@@ -45,7 +43,7 @@ export function BreachFacts({ breach }: BreachFactsProps) {
       </CardHeader>
       <CardContent className="space-y-1">
         <FactRow icon={Building2} label="Company" value={breach.company} />
-        <FactRow icon={Globe} label="Industry" value={breach.industry} />
+        <FactRow icon={Globe} label="Industry" value={breach.industry ? breach.industry.charAt(0).toUpperCase() + breach.industry.slice(1) : null} />
         <FactRow
           icon={MapPin}
           label="Location"
@@ -83,11 +81,6 @@ export function BreachFacts({ breach }: BreachFactsProps) {
           icon={UserX}
           label="Threat Actor"
           value={breach.threat_actor}
-        />
-        <FactRow
-          icon={Activity}
-          label="Status"
-          value={<StatusBadge status={breach.status} />}
         />
       </CardContent>
     </Card>

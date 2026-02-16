@@ -96,7 +96,6 @@ class DatabaseWriter:
                 'mitre_techniques': breach_data.get('mitre_attack_techniques', []),
                 'summary': breach_data.get('summary'),
                 'lessons_learned': breach_data.get('lessons_learned'),
-                'status': 'investigating'  # Default status
             }
 
             # Remove None values

@@ -1,10 +1,11 @@
 export function formatDate(dateString: string | null): string {
   if (!dateString) return "Unknown";
-  const date = new Date(dateString);
+  // Handle both YYYY-MM and YYYY-MM-DD formats
+  const [year, month] = dateString.split("-").map(Number);
+  const date = new Date(year, month - 1);
   return date.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
-    day: "numeric",
   });
 }
 

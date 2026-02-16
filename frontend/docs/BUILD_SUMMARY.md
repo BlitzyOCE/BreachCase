@@ -60,10 +60,10 @@ npm run dev
 
 | File | Purpose |
 |------|---------|
-| `breach-card.tsx` | Card used on homepage and search results. Shows company name, severity badge, relative date, industry/country, truncated summary, records affected, update count badge. Links to detail page. |
+| `breach-card.tsx` | Card used on homepage and search results. Shows company name, relative date, industry/country, truncated summary, records affected, update count badge. Links to detail page. |
 | `breach-detail.tsx` | Orchestrates the full detail page layout. Two-column on desktop (main content + sidebar), single column on mobile. Renders all sections in order. |
 | `breach-timeline.tsx` | Vertical timeline for `breach_updates`. Each entry has a date, typed icon (Gavel for fines, Scale for class actions, Shield for remediation, etc.), and description text. |
-| `breach-facts.tsx` | Sidebar card with icon + label + value rows: company, industry, location, discovery date, disclosure date, records affected, attack vector, threat actor, status. Null fields are hidden. |
+| `breach-facts.tsx` | Sidebar card with icon + label + value rows: company, industry, location, discovery date, disclosure date, records affected, attack vector, threat actor. Null fields are hidden. |
 | `breach-tags.tsx` | Sidebar card grouping all `breach_tags` by type (Industry, Attack Vector, CVE, MITRE, Threat Actor). Each tag is a clickable badge linking to `/search`. |
 | `related-breaches.tsx` | Small grid (up to 3) of breach cards for similar incidents, powered by the `get_related_breaches()` Supabase RPC. Hidden if no results. |
 | `source-list.tsx` | Ordered list of source articles for a breach. Each item shows title, publication date, and opens the original URL in a new tab. |
@@ -86,7 +86,6 @@ npm run dev
 | File | Purpose |
 |------|---------|
 | `severity-badge.tsx` | Color-coded badge — `critical`=red, `high`=orange, `medium`=yellow, `low`=green. Uses shadcn `badge`. |
-| `status-badge.tsx` | Status pill — `investigating`=blue, `confirmed`=amber, `resolved`=green. |
 | `tag-badge.tsx` | Clickable `<Badge>` that links to `/search?{tagType}={tagValue}`. Can be set non-clickable for display-only use. |
 | `stat-card.tsx` | Simple bordered card with a large number and a label. Used on the homepage for total breaches, weekly count, and source count. |
 | `empty-state.tsx` | Centered icon + heading + subtitle for empty search results or missing data. |
@@ -126,8 +125,8 @@ Client wrapper around `NextThemesProvider`. Required because `ThemeProvider` nee
 
 | File | Exports | Purpose |
 |------|---------|---------|
-| `constants.ts` | `SEVERITY_COLORS`, `STATUS_COLORS`, `STATUS_LABELS`, `ATTACK_VECTOR_LABELS`, `UPDATE_TYPE_LABELS`, `TAG_TYPE_LABELS`, `RSS_SOURCES` | Maps enum values to display labels and Tailwind color classes |
-| `formatting.ts` | `formatDate`, `formatRelativeDate`, `formatNumber`, `formatRecordsAffected`, `truncate` | Date formatting (e.g. "Jan 15, 2026"), relative dates ("3 days ago"), number shortening ("1.5M records"), text truncation with ellipsis |
+| `constants.ts` | `SEVERITY_COLORS`, `ATTACK_VECTOR_LABELS`, `UPDATE_TYPE_LABELS`, `TAG_TYPE_LABELS`, `RSS_SOURCES` | Maps enum values to display labels and Tailwind color classes |
+| `formatting.ts` | `formatDate`, `formatRelativeDate`, `formatNumber`, `formatRecordsAffected`, `truncate` | Date formatting (e.g. "Jan 2026"), relative dates ("3 days ago"), number shortening ("1.5M records"), text truncation with ellipsis |
 
 ---
 
@@ -144,7 +143,7 @@ Mirrors `database/current_db.sql` exactly. Key types:
 | `BreachTag` | One tag from `breach_tags` |
 | `Source` | One source article from `sources` |
 | `TagCount` | One row from the `tag_counts` view |
-| `Severity`, `Status`, `AttackVector`, `UpdateType`, `TagType` | String union types matching all CHECK constraints in the schema |
+| `Severity`, `AttackVector`, `UpdateType`, `TagType` | String union types matching all CHECK constraints in the schema |
 
 ---
 

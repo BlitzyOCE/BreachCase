@@ -138,8 +138,8 @@ Extract the following information in JSON format:
   "industry": "Industry sector (e.g., healthcare, finance, retail, technology, government, education, null if unknown)",
   "country": "Country where the breached organization is headquartered or operates (ISO country name, null if unknown)",
   "continent": "Continent of the breached organization: Africa|Asia|Europe|North America|Oceania|South America (null if unknown)",
-  "discovery_date": "Date the breach was internally discovered in YYYY-MM-DD format (null if not clearly stated in the article)",
-  "disclosure_date": "Date the breach was publicly disclosed or announced in YYYY-MM-DD format (null if not clearly stated in the article)",
+  "discovery_date": "Month and year the breach was internally discovered in YYYY-MM-DD format, always use 01 for the day (null if not clearly stated in the article)",
+  "disclosure_date": "Month and year the breach was publicly disclosed or announced in YYYY-MM-DD format, always use 01 for the day (null if not clearly stated in the article)",
   "records_affected": number of records affected as integer (null if not specified),
   "breach_method": "Brief description of how the breach occurred (null if not specified)",
   "attack_vector": "One of: phishing|ransomware|api_exploit|insider|supply_chain|misconfiguration|malware|ddos|other (null if unclear)",
@@ -166,8 +166,8 @@ Discovery Date vs Disclosure Date:
 - Only populate these if the article explicitly states or clearly implies the date
 - If only one date is mentioned and it is unclear which type it is, populate disclosure_date only
 - Do NOT infer or guess dates from vague relative terms like "recently" or "last month"
-- If an exact date is given (e.g., "January 15, 2026"), use it: "2026-01-15"
-- If only month and year are given (e.g., "October 2025"), use the 1st: "2025-10-01"
+- Always use YYYY-MM-01 format, dropping the exact day (e.g., "January 15, 2026" becomes "2026-01-01", "October 2025" becomes "2025-10-01")
+- If only a year is given with no month, use null
 - If dates are not clearly provided, use null
 
 Threat Actor:

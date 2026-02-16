@@ -1,7 +1,6 @@
 // TypeScript types mirroring the Supabase database schema (current_db.sql)
 
 export type Severity = "low" | "medium" | "high" | "critical";
-export type Status = "investigating" | "confirmed" | "resolved";
 export type AttackVector =
   | "phishing"
   | "ransomware"
@@ -43,7 +42,6 @@ export interface Breach {
   attack_vector: AttackVector | null;
   data_compromised: string[];
   severity: Severity | null;
-  status: Status;
   threat_actor: string | null;
   cve_references: string[];
   mitre_techniques: string[];
