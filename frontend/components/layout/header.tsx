@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Shield } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { BriefcaseLogo } from "@/components/ui/logo";
 
 export function Header() {
   return (
@@ -9,7 +9,7 @@ export function Header() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-primary" />
+            <BriefcaseLogo className="h-8 w-8 text-amber-800" />
             <span className="text-xl font-bold tracking-tight">
               BreachCase
             </span>

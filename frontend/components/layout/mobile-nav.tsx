@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, Shield } from "lucide-react";
+import { Menu } from "lucide-react";
+import { BriefcaseLogo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -27,7 +28,7 @@ export function MobileNav() {
       <SheetContent side="right" className="w-72">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
+            <BriefcaseLogo className="h-7 w-7 text-amber-800" />
             BreachCase
           </SheetTitle>
         </SheetHeader>
