@@ -14,7 +14,7 @@ export async function getRecentBreaches(
   const { data, error } = await supabase
     .from("breach_summary")
     .select("*")
-    .order("last_update_date", { ascending: false, nullsFirst: false })
+    .order("disclosure_date", { ascending: false, nullsFirst: false })
     .limit(limit);
 
   if (error) throw error;
@@ -186,7 +186,7 @@ export async function getFilteredBreaches(
       });
       break;
     default:
-      query = query.order("created_at", { ascending: false });
+      query = query.order("disclosure_date", { ascending: false, nullsFirst: false });
   }
 
   // Pagination

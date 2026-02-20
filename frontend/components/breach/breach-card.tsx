@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Calendar, Database, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { formatRelativeDate, formatNumber, truncate } from "@/lib/utils/formatting";
+import { formatYearMonth, formatRecordsAffected, truncate } from "@/lib/utils/formatting";
 import type { BreachSummary } from "@/types/database";
 
 interface BreachCardProps {
@@ -35,12 +35,12 @@ export function BreachCard({ breach }: BreachCardProps) {
           <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" />
-              {formatRelativeDate(breach.created_at)}
+              {formatYearMonth(breach.disclosure_date ?? breach.discovery_date ?? breach.created_at)}
             </span>
             {breach.records_affected && (
               <span className="flex items-center gap-1">
                 <Database className="h-3.5 w-3.5" />
-                {formatNumber(breach.records_affected)}
+                {formatRecordsAffected(breach.records_affected)}
               </span>
             )}
             {breach.update_count > 0 && (

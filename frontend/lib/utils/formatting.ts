@@ -44,6 +44,13 @@ export function formatRecordsAffected(num: number | null): string {
   return `${formatNumber(num)} records`;
 }
 
+export function formatYearMonth(dateString: string | null): string {
+  if (!dateString) return "Unknown";
+  // Works with YYYY-MM-DD, YYYY-MM, or full ISO strings
+  const parts = dateString.split("T")[0].split("-");
+  return `${parts[0]}-${parts[1]}`;
+}
+
 export function truncate(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength).trimEnd() + "...";
