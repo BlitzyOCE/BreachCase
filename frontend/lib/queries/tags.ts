@@ -2,7 +2,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import type { TagCount, TagType } from "@/types/database";
 
 export async function getTagCounts(tagType: TagType): Promise<TagCount[]> {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { data, error } = await supabase
     .from("tag_counts")
     .select("*")
@@ -14,7 +14,7 @@ export async function getTagCounts(tagType: TagType): Promise<TagCount[]> {
 }
 
 export async function getAllTagCounts(): Promise<Record<TagType, TagCount[]>> {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { data, error } = await supabase
     .from("tag_counts")
     .select("*")

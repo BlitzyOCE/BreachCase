@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu } from "lucide-react";
+import { Menu, User, Settings, LogOut, LogIn } from "lucide-react";
+import { useAuth } from "@/components/auth/auth-provider";
 import { BriefcaseLogo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +17,7 @@ import { SearchBar } from "@/components/search/search-bar";
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
+  const { user, signOut } = useAuth();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -56,6 +58,46 @@ export function MobileNav() {
             >
               About
             </Link>
+            <div className="my-2 border-t" />
+            {user ? (
+              <>
+                <Link
+                  href="/profile"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
+                >
+                  <User className="h-4 w-4" />
+                  Profile
+                </Link>
+                <Link
+                  href="/settings"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
+                >
+                  <Settings className="h-4 w-4" />
+                  Settings
+                </Link>
+                <button
+                  onClick={() => {
+                    signOut();
+                    setOpen(false);
+                  }}
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
+              >
+                <LogIn className="h-4 w-4" />
+                Sign in
+              </Link>
+            )}
           </nav>
         </div>
       </SheetContent>

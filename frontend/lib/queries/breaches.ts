@@ -10,7 +10,7 @@ import type {
 export async function getRecentBreaches(
   limit = 12
 ): Promise<BreachSummary[]> {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { data, error } = await supabase
     .from("breach_summary")
     .select("*")
@@ -24,7 +24,7 @@ export async function getRecentBreaches(
 export async function getBreachById(
   id: string
 ): Promise<BreachDetail | null> {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
 
   const [breachResult, updatesResult, tagsResult, sourcesResult] =
     await Promise.all([
@@ -56,7 +56,7 @@ export async function searchBreaches(
   query: string,
   limit = 20
 ): Promise<BreachSummary[]> {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { data, error } = await supabase.rpc("search_breaches", {
     search_query: query,
   });
@@ -69,7 +69,7 @@ export async function getRelatedBreaches(
   breachId: string,
   maxResults = 3
 ): Promise<BreachSummary[]> {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { data, error } = await supabase.rpc("get_related_breaches", {
     breach_uuid: breachId,
     max_results: maxResults,
@@ -80,7 +80,7 @@ export async function getRelatedBreaches(
 }
 
 export async function getBreachCount(): Promise<number> {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { count, error } = await supabase
     .from("breaches")
     .select("*", { count: "exact", head: true });
@@ -90,7 +90,7 @@ export async function getBreachCount(): Promise<number> {
 }
 
 export async function getRecentBreachCount(days = 7): Promise<number> {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const since = new Date();
   since.setDate(since.getDate() - days);
 
@@ -117,7 +117,7 @@ interface FilterOptions {
 export async function getFilteredBreaches(
   filters: FilterOptions
 ): Promise<{ data: BreachSummary[]; count: number }> {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { page = 1, perPage = 12 } = filters;
 
   if (filters.query) {
