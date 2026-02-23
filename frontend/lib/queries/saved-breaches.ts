@@ -19,6 +19,17 @@ export async function getSavedBreaches(
   }));
 }
 
+export async function getSavedBreachIds(userId: string): Promise<Set<string>> {
+  const supabase = createBrowserClient();
+  const { data, error } = await supabase
+    .from("saved_breaches")
+    .select("breach_id")
+    .eq("user_id", userId);
+
+  if (error) throw error;
+  return new Set((data ?? []).map((row: { breach_id: string }) => row.breach_id));
+}
+
 export async function isBreachSaved(breachId: string): Promise<boolean> {
   const supabase = createBrowserClient();
   const { data } = await supabase

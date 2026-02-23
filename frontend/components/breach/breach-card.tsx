@@ -2,57 +2,62 @@ import Link from "next/link";
 import { Calendar, Database, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { formatYearMonth, formatRecordsAffected, truncate } from "@/lib/utils/formatting";
+import { SaveBreachButton } from "@/components/breach/save-breach-button";
 import type { BreachSummary } from "@/types/database";
 
 interface BreachCardProps {
   breach: BreachSummary;
+  saved?: boolean;
 }
 
-export function BreachCard({ breach }: BreachCardProps) {
+export function BreachCard({ breach, saved }: BreachCardProps) {
   return (
-    <Link href={`/breach/${breach.id}`}>
-      <Card className="h-full transition-shadow hover:shadow-md">
-        <CardHeader className="pb-1">
-          <div>
-              <h3 className="line-clamp-3 text-lg font-semibold leading-tight">
-                {breach.title || breach.company}
-              </h3>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                {breach.industry && <span className="capitalize">{breach.industry}</span>}
-                {breach.industry && breach.country && (
-                  <span className="text-border">|</span>
-                )}
-                {breach.country && <span>{breach.country}</span>}
-              </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {breach.summary && (
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {truncate(breach.summary, 150)}
-            </p>
-          )}
-          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Calendar className="h-3.5 w-3.5" />
-              {formatYearMonth(breach.disclosure_date ?? breach.discovery_date ?? breach.created_at)}
-            </span>
-            {breach.records_affected && (
-              <span className="flex items-center gap-1">
-                <Database className="h-3.5 w-3.5" />
-                {formatRecordsAffected(breach.records_affected)}
-              </span>
+    <div className="relative">
+      <SaveBreachButton breachId={breach.id} initialSaved={saved} />
+      <Link href={`/breach/${breach.id}`}>
+        <Card className="h-full transition-shadow hover:shadow-md">
+          <CardHeader className="pb-1">
+            <div>
+                <h3 className="line-clamp-3 text-lg font-semibold leading-tight pr-8">
+                  {breach.title || breach.company}
+                </h3>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  {breach.industry && <span className="capitalize">{breach.industry}</span>}
+                  {breach.industry && breach.country && (
+                    <span className="text-border">|</span>
+                  )}
+                  {breach.country && <span>{breach.country}</span>}
+                </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {breach.summary && (
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {truncate(breach.summary, 150)}
+              </p>
             )}
-            {breach.update_count > 0 && (
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
-                <RefreshCw className="h-3.5 w-3.5" />
-                {breach.update_count}{" "}
-                {breach.update_count === 1 ? "update" : "updates"}
+                <Calendar className="h-3.5 w-3.5" />
+                {formatYearMonth(breach.disclosure_date ?? breach.discovery_date ?? breach.created_at)}
               </span>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
+              {breach.records_affected && (
+                <span className="flex items-center gap-1">
+                  <Database className="h-3.5 w-3.5" />
+                  {formatRecordsAffected(breach.records_affected)}
+                </span>
+              )}
+              {breach.update_count > 0 && (
+                <span className="flex items-center gap-1">
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  {breach.update_count}{" "}
+                  {breach.update_count === 1 ? "update" : "updates"}
+                </span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
+    </div>
   );
 }

@@ -52,6 +52,13 @@ export function MobileNav() {
               Search
             </Link>
             <Link
+              href="/my-breachcase"
+              onClick={() => setOpen(false)}
+              className="rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
+            >
+              My Breachcase
+            </Link>
+            <Link
               href="/about"
               onClick={() => setOpen(false)}
               className="rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"

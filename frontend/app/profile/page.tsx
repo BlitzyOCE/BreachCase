@@ -2,14 +2,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/queries/profile";
-import { getRecentlyViewed } from "@/lib/queries/breach-views-server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ProfileHeader } from "@/components/profile/profile-header";
 import { ProfileEditForm } from "@/components/profile/profile-edit-form";
-import { SavedBreachesList } from "@/components/profile/saved-breaches-list";
-import { WatchlistManager } from "@/components/profile/watchlist-manager";
-import { RecentlyViewed } from "@/components/profile/recently-viewed";
 
 export const metadata: Metadata = {
   title: "Profile",
@@ -23,10 +19,7 @@ export default async function ProfilePage() {
 
   if (!user) redirect("/login");
 
-  const [profile, recentlyViewed] = await Promise.all([
-    getCurrentProfile(),
-    getRecentlyViewed(user.id, 10),
-  ]);
+  const profile = await getCurrentProfile();
 
   if (!profile) {
     return (
@@ -51,37 +44,6 @@ export default async function ProfilePage() {
         </CardHeader>
         <CardContent>
           <ProfileEditForm profile={profile} />
-        </CardContent>
-      </Card>
-
-      <Separator />
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Saved Breaches</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <SavedBreachesList />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Watchlists</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <WatchlistManager />
-        </CardContent>
-      </Card>
-
-      <Separator />
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Recently Viewed</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <RecentlyViewed breaches={recentlyViewed} />
         </CardContent>
       </Card>
     </div>

@@ -29,6 +29,12 @@ export function Header() {
               Search
             </Link>
             <Link
+              href="/my-breachcase"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              My Breachcase
+            </Link>
+            <Link
               href="/about"
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
