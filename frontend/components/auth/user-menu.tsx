@@ -4,33 +4,48 @@ import Link from "next/link";
 import { User, Settings, LogOut } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 export function UserMenu() {
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
 
-  const initial =
-    user?.user_metadata?.display_name?.charAt(0) ??
-    user?.email?.charAt(0) ??
-    "?";
+  const displayName =
+    profile?.display_name ??
+    user?.user_metadata?.display_name ??
+    user?.email ??
+    "User";
+
+  const initial = displayName.charAt(0);
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
-            {initial.toUpperCase()}
-          </span>
+          <Avatar>
+            {profile?.avatar_url ? (
+              <AvatarImage src={profile.avatar_url} alt={displayName} />
+            ) : null}
+            <AvatarFallback>{initial.toUpperCase()}</AvatarFallback>
+          </Avatar>
           <span className="sr-only">User menu</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuLabel className="font-normal">
+          <p className="text-sm font-medium">{displayName}</p>
+          {user?.email && displayName !== user.email && (
+            <p className="text-xs text-muted-foreground">{user.email}</p>
+          )}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link href="/profile">
             <User className="mr-2 h-4 w-4" />

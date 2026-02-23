@@ -58,6 +58,17 @@ CREATE TABLE public.breaches (
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT breaches_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.profiles (
+  id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  display_name text,
+  avatar_url text,
+  job_title text,
+  company text,
+  role text NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT profiles_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.company_aliases (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   breach_id uuid,

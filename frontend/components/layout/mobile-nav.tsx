@@ -17,7 +17,7 @@ import { SearchBar } from "@/components/search/search-bar";
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -61,6 +61,11 @@ export function MobileNav() {
             <div className="my-2 border-t" />
             {user ? (
               <>
+                {profile?.display_name && (
+                  <p className="px-3 py-1 text-xs text-muted-foreground">
+                    Signed in as {profile.display_name}
+                  </p>
+                )}
                 <Link
                   href="/profile"
                   onClick={() => setOpen(false)}
