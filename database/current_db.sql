@@ -36,7 +36,6 @@ CREATE TABLE public.breach_views (
 CREATE TABLE public.breaches (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   company text NOT NULL,
-  title text,
   industry text,
   country text,
   continent text,
@@ -56,18 +55,23 @@ CREATE TABLE public.breaches (
   search_vector tsvector,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
+  title text,
   CONSTRAINT breaches_pkey PRIMARY KEY (id)
 );
-CREATE TABLE public.profiles (
-  id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  display_name text,
-  avatar_url text,
-  job_title text,
-  company text,
-  role text NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+CREATE TABLE public.comments (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  breach_id uuid NOT NULL,
+  user_id uuid,
+  parent_id uuid,
+  body text NOT NULL CHECK (char_length(body) >= 1 AND char_length(body) <= 2000),
+  status text NOT NULL DEFAULT 'visible'::text CHECK (status = ANY (ARRAY['visible'::text, 'flagged'::text, 'removed'::text])),
+  is_edited boolean NOT NULL DEFAULT false,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT profiles_pkey PRIMARY KEY (id)
+  CONSTRAINT comments_pkey PRIMARY KEY (id),
+  CONSTRAINT comments_breach_id_fkey FOREIGN KEY (breach_id) REFERENCES public.breaches(id),
+  CONSTRAINT comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id),
+  CONSTRAINT comments_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.comments(id)
 );
 CREATE TABLE public.company_aliases (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -78,6 +82,27 @@ CREATE TABLE public.company_aliases (
   CONSTRAINT company_aliases_pkey PRIMARY KEY (id),
   CONSTRAINT company_aliases_breach_id_fkey FOREIGN KEY (breach_id) REFERENCES public.breaches(id)
 );
+CREATE TABLE public.profiles (
+  id uuid NOT NULL,
+  display_name text,
+  avatar_url text,
+  job_title text,
+  company text,
+  role text NOT NULL DEFAULT 'user'::text CHECK (role = ANY (ARRAY['user'::text, 'admin'::text])),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.saved_breaches (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid NOT NULL,
+  breach_id uuid NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT saved_breaches_pkey PRIMARY KEY (id),
+  CONSTRAINT saved_breaches_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id),
+  CONSTRAINT saved_breaches_breach_id_fkey FOREIGN KEY (breach_id) REFERENCES public.breaches(id)
+);
 CREATE TABLE public.sources (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   breach_id uuid,
@@ -87,4 +112,14 @@ CREATE TABLE public.sources (
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT sources_pkey PRIMARY KEY (id),
   CONSTRAINT sources_breach_id_fkey FOREIGN KEY (breach_id) REFERENCES public.breaches(id)
+);
+CREATE TABLE public.watchlists (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid NOT NULL,
+  name text NOT NULL,
+  filters jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT watchlists_pkey PRIMARY KEY (id),
+  CONSTRAINT watchlists_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
 );

@@ -14,7 +14,6 @@ import {
   updateWatchlist,
   deleteWatchlist,
 } from "@/lib/queries/watchlists";
-import { executeWatchlistFilters } from "@/lib/actions/watchlist-feed";
 import type {
   Watchlist,
   WatchlistFilters,
@@ -74,7 +73,13 @@ export function WatchlistTabs({
       }));
 
       try {
-        const result = await executeWatchlistFilters(filters, page);
+        const res = await fetch("/api/watchlist-feed", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filters, page }),
+        });
+        if (!res.ok) throw new Error("Feed fetch failed");
+        const result: { data: BreachSummary[]; count: number } = await res.json();
         setFeeds((prev) => ({
           ...prev,
           [watchlistId]: {

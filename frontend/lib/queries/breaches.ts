@@ -57,12 +57,36 @@ export async function searchBreaches(
   limit = 20
 ): Promise<BreachSummary[]> {
   const supabase = await createServerClient();
-  const { data, error } = await supabase.rpc("search_breaches", {
-    search_query: query,
-  });
 
-  if (error) throw error;
-  return (data as BreachSummary[])?.slice(0, limit) ?? [];
+  // The search_breaches RPC returns { breach_id, company, summary, rank }
+  // so we need to fetch full data from breach_summary using those IDs.
+  const { data: searchResults, error: searchError } = await supabase.rpc(
+    "search_breaches",
+    { search_query: query }
+  );
+
+  if (searchError) throw searchError;
+  if (!searchResults?.length) return [];
+
+  const rankedIds: string[] = searchResults
+    .slice(0, limit)
+    .map((r: { breach_id: string }) => r.breach_id);
+
+  const { data: breaches, error: breachError } = await supabase
+    .from("breach_summary")
+    .select("*")
+    .in("id", rankedIds);
+
+  if (breachError) throw breachError;
+  if (!breaches?.length) return [];
+
+  // Preserve search ranking order
+  const byId = new Map(
+    (breaches as BreachSummary[]).map((b) => [b.id, b])
+  );
+  return rankedIds
+    .map((id) => byId.get(id))
+    .filter((b): b is BreachSummary => b != null);
 }
 
 export async function getRelatedBreaches(
@@ -70,13 +94,36 @@ export async function getRelatedBreaches(
   maxResults = 3
 ): Promise<BreachSummary[]> {
   const supabase = await createServerClient();
-  const { data, error } = await supabase.rpc("get_related_breaches", {
-    breach_uuid: breachId,
-    max_results: maxResults,
-  });
 
-  if (error) throw error;
-  return (data as BreachSummary[]) ?? [];
+  // The RPC returns partial columns (breach_id, shared_tag_count, etc.)
+  // so we fetch full data from breach_summary using the returned IDs.
+  const { data: rpcResults, error: rpcError } = await supabase.rpc(
+    "get_related_breaches",
+    { breach_uuid: breachId, max_results: maxResults }
+  );
+
+  if (rpcError) throw rpcError;
+  if (!rpcResults?.length) return [];
+
+  const relatedIds: string[] = rpcResults.map(
+    (r: { breach_id: string }) => r.breach_id
+  );
+
+  const { data: breaches, error: breachError } = await supabase
+    .from("breach_summary")
+    .select("*")
+    .in("id", relatedIds);
+
+  if (breachError) throw breachError;
+  if (!breaches?.length) return [];
+
+  // Preserve the RPC's ranking order
+  const byId = new Map(
+    (breaches as BreachSummary[]).map((b) => [b.id, b])
+  );
+  return relatedIds
+    .map((id) => byId.get(id))
+    .filter((b): b is BreachSummary => b != null);
 }
 
 export async function getBreachCount(): Promise<number> {
