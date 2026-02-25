@@ -4,12 +4,15 @@ export type Severity = "low" | "medium" | "high" | "critical";
 export type AttackVector =
   | "phishing"
   | "ransomware"
-  | "api_exploit"
+  | "malware"
+  | "vulnerability_exploit"
+  | "credential_attack"
+  | "social_engineering"
   | "insider"
   | "supply_chain"
   | "misconfiguration"
-  | "malware"
-  | "ddos"
+  | "unauthorized_access"
+  | "scraping"
   | "other";
 export type UpdateType =
   | "discovery"

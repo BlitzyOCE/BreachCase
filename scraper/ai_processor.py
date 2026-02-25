@@ -285,8 +285,9 @@ class AIProcessor:
 
         # Validate attack_vector if present - must match DB CHECK constraint
         valid_attack_vectors = {
-            'phishing', 'ransomware', 'api_exploit', 'insider',
-            'supply_chain', 'misconfiguration', 'malware', 'ddos', 'other'
+            'phishing', 'ransomware', 'malware', 'vulnerability_exploit',
+            'credential_attack', 'social_engineering', 'insider', 'supply_chain',
+            'misconfiguration', 'unauthorized_access', 'scraping', 'other'
         }
         if data.get('attack_vector') and data['attack_vector'] not in valid_attack_vectors:
             logger.warning(f"Invalid attack_vector: {data['attack_vector']}, setting to null")

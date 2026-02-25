@@ -39,7 +39,7 @@ export function BreachCard({ breach, saved }: BreachCardProps) {
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Calendar className="h-3.5 w-3.5" />
-                {formatYearMonth(breach.disclosure_date ?? breach.discovery_date ?? breach.created_at)}
+                {formatYearMonth(breach.discovery_date ?? breach.disclosure_date ?? breach.created_at)}
               </span>
               {breach.records_affected && (
                 <span className="flex items-center gap-1">

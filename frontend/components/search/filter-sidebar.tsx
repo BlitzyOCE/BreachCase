@@ -67,7 +67,7 @@ function FilterSection({ title, paramKey, options }: FilterSectionProps) {
                 checked={activeValues.includes(option.tag_value)}
                 onCheckedChange={() => toggleFilter(option.tag_value)}
               />
-              <span className="flex-1 truncate">{option.tag_value}</span>
+              <span className="flex-1 truncate capitalize">{option.tag_value.replace(/_/g, " ")}</span>
               <span className="text-xs text-muted-foreground">
                 {option.breach_count}
               </span>

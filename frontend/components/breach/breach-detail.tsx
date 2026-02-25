@@ -4,7 +4,7 @@ import { SeverityBadge } from "@/components/ui/severity-badge";
 import { BreachFacts } from "@/components/breach/breach-facts";
 import { BreachTags } from "@/components/breach/breach-tags";
 import { BreachTimeline } from "@/components/breach/breach-timeline";
-import { SourceList } from "@/components/breach/source-list";
+
 import { RelatedBreaches } from "@/components/breach/related-breaches";
 import { SaveButton } from "@/components/breach/save-button";
 import { CommentSection } from "@/components/comments/comment-section";
@@ -99,9 +99,6 @@ export function BreachDetail({ breach, relatedBreaches }: BreachDetailProps) {
           )}
 
           <Separator />
-
-          {/* Sources */}
-          <SourceList sources={breach.sources} />
 
           {/* CVE References */}
           {breach.cve_references && breach.cve_references.length > 0 && (

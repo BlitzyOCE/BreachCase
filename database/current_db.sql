@@ -43,7 +43,7 @@ CREATE TABLE public.breaches (
   disclosure_date date,
   records_affected bigint,
   breach_method text,
-  attack_vector text CHECK (attack_vector = ANY (ARRAY['phishing'::text, 'ransomware'::text, 'api_exploit'::text, 'insider'::text, 'supply_chain'::text, 'misconfiguration'::text, 'malware'::text, 'ddos'::text, 'other'::text])),
+  attack_vector text CHECK (attack_vector = ANY (ARRAY['phishing'::text, 'ransomware'::text, 'malware'::text, 'vulnerability_exploit'::text, 'credential_attack'::text, 'social_engineering'::text, 'insider'::text, 'supply_chain'::text, 'misconfiguration'::text, 'unauthorized_access'::text, 'scraping'::text, 'other'::text])),
   data_compromised jsonb DEFAULT '[]'::jsonb,
   severity text CHECK (severity = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'critical'::text])),
   status text DEFAULT 'investigating'::text CHECK (status = ANY (ARRAY['investigating'::text, 'confirmed'::text, 'resolved'::text])),

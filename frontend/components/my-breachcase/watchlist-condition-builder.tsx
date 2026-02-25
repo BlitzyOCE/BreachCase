@@ -71,7 +71,7 @@ function FilterSection({ title, options, selected, onToggle }: FilterSectionProp
             onCheckedChange={() => onToggle(option.tag_value)}
             onSelect={(e) => e.preventDefault()}
           >
-            <span className="flex-1 truncate capitalize">{option.tag_value}</span>
+            <span className="flex-1 truncate capitalize">{option.tag_value.replace(/_/g, " ")}</span>
             <span className="ml-auto text-xs text-muted-foreground">
               {option.breach_count}
             </span>

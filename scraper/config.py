@@ -143,7 +143,7 @@ Extract the following information in JSON format:
   "disclosure_date": "Month and year the breach was publicly disclosed or announced in YYYY-MM-DD format, always use 01 for the day (null if not clearly stated in the article)",
   "records_affected": number of records affected as integer (null if not specified),
   "breach_method": "Brief description of how the breach occurred (null if not specified)",
-  "attack_vector": "One of: phishing|ransomware|api_exploit|insider|supply_chain|misconfiguration|malware|ddos|other (null if unclear)",
+  "attack_vector": "One of: phishing|ransomware|malware|vulnerability_exploit|credential_attack|social_engineering|insider|supply_chain|misconfiguration|unauthorized_access|scraping|other. Use phishing for phishing/spear-phishing/BEC. Use vulnerability_exploit for zero-days, CVE exploitation, SQLi, RCE, API exploits. Use credential_attack for credential stuffing, brute force, password spraying. Use social_engineering for pretexting, vishing, impersonation (non-phishing). Use unauthorized_access for stolen/compromised credentials or unknown intrusion method. Use scraping for web scraping or API abuse for data harvesting. Use other ONLY if none of the above fit. Null if unclear.",
   "threat_actor": "Name of the threat actor, hacker group, or ransomware gang responsible (null if unknown)",
   "data_compromised": ["Array of data types exposed, e.g., emails, passwords, SSNs, credit cards"],
   "severity": "One of: low|medium|high|critical based on impact (null if cannot determine)",
@@ -221,7 +221,7 @@ Return JSON only:
 
 # Validation settings
 MIN_SUMMARY_LENGTH = 50  # Minimum characters for summary
-MAX_SUMMARY_LENGTH = 500  # Maximum characters for summary
+MAX_SUMMARY_LENGTH = 800  # Maximum characters for summary
 
 # Classification settings (Two-Stage AI)
 ENABLE_CLASSIFICATION = os.getenv('ENABLE_CLASSIFICATION', 'True').lower() in ('true', '1', 'yes')

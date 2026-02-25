@@ -17,12 +17,15 @@ export const SEVERITY_ORDER: Record<Severity, number> = {
 export const ATTACK_VECTOR_LABELS: Record<AttackVector, string> = {
   phishing: "Phishing",
   ransomware: "Ransomware",
-  api_exploit: "API Exploit",
+  malware: "Malware",
+  vulnerability_exploit: "Vulnerability Exploit",
+  credential_attack: "Credential Attack",
+  social_engineering: "Social Engineering",
   insider: "Insider Threat",
   supply_chain: "Supply Chain",
   misconfiguration: "Misconfiguration",
-  malware: "Malware",
-  ddos: "DDoS",
+  unauthorized_access: "Unauthorized Access",
+  scraping: "Data Scraping",
   other: "Other",
 };
 
