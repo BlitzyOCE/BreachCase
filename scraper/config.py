@@ -83,7 +83,8 @@ REQUEST_TIMEOUT = int(os.getenv('REQUEST_TIMEOUT', '30'))  # seconds
 MAX_FEED_WORKERS = int(os.getenv('MAX_FEED_WORKERS', '10'))  # parallel RSS fetch threads
 MAX_EXISTING_BREACHES_FETCH = int(os.getenv('MAX_EXISTING_BREACHES_FETCH', '100'))  # DB fetch cap
 MAX_EXISTING_BREACHES_CONTEXT = int(os.getenv('MAX_EXISTING_BREACHES_CONTEXT', '50'))  # AI prompt context cap
-FUZZY_MATCH_THRESHOLD = float(os.getenv('FUZZY_MATCH_THRESHOLD', '0.85'))  # in-run company name similarity
+FUZZY_MATCH_THRESHOLD = float(os.getenv('FUZZY_MATCH_THRESHOLD', '0.85'))  # high-confidence company match
+FUZZY_CANDIDATE_THRESHOLD = float(os.getenv('FUZZY_CANDIDATE_THRESHOLD', '0.6'))  # pre-filter: lower threshold to surface candidates for AI review
 
 # Logging Configuration
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
@@ -195,7 +196,7 @@ Article Title: {title}
 Article URL: {url}
 Article Summary: {summary}
 
-Existing breaches in database (last 90 days):
+Candidate matching breaches from database (pre-filtered by company name similarity):
 {existing_breaches}
 
 Classification rules:

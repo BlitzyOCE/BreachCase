@@ -1,15 +1,15 @@
 # BreachCase Scraper
 
-Python-based breach news aggregation scraper that fetches articles from 10 RSS feeds, uses DeepSeek AI for data extraction, and stores results in Supabase.
+Python-based breach news aggregation scraper that fetches articles from 8 RSS feeds, uses DeepSeek AI for classification and data extraction, and stores results in Supabase.
 
 ## Features
 
-- **10 RSS Feed Sources**: BleepingComputer, The Hacker News, DataBreachToday, Dark Reading, Krebs, HelpNet Security, CERT.be, NCSC UK, Check Point Research, Have I Been Pwned
-- **Two-Stage AI Processing**: Fast classification filter before expensive extraction (40-60% cost savings)
-- **AI-Powered Extraction**: Uses DeepSeek API to extract structured breach data
-- **Update Detection**: Automatically identifies if articles are updates to existing breaches
-- **Local Caching**: Saves raw articles and prevents duplicate processing
-- **Database Integration**: Writes to Supabase (PostgreSQL) with proper schema
+- **8 RSS Feed Sources**: BleepingComputer, The Hacker News, DataBreachToday, Krebs on Security, HelpNet Security, NCSC UK, Check Point Research, Have I Been Pwned
+- **Two-Stage AI Processing**: Fast classification filter before expensive extraction (~40-60% cost savings)
+- **Full-Database Dedup**: Fuzzy pre-filter across all breaches (no date limit) before AI update detection, so no breach is ever invisible to dedup regardless of age
+- **Update Detection**: Automatically identifies if articles are updates to existing breaches vs. duplicate sources
+- **Local Caching**: Saves raw articles and prevents duplicate URL processing via `cache/processed_ids.txt`
+- **Database Integration**: Writes to Supabase (PostgreSQL)
 - **Comprehensive Logging**: Daily logs with error tracking and classification metrics
 
 ## Architecture
@@ -17,29 +17,36 @@ Python-based breach news aggregation scraper that fetches articles from 10 RSS f
 ```
 RSS Feeds -> feed_parser.py -> cache_manager.py -> ai_processor.py -> db_writer.py -> Supabase
                                                     |
-                                                    Stage 1: Classification (Fast & Cheap)
-                                                    Stage 2: Extraction (Detailed & Expensive)
+                                                    Stage 1: Classify (is this a breach?)
+                                                    Stage 2: Extract (structured data)
+                                                    Stage 3: Dedup (fuzzy pre-filter -> AI)
+                                                    Stage 4: Write (new breach or update)
 ```
 
-### Two-Stage AI Processing
-
-The scraper uses a two-stage AI approach to optimize cost and performance:
+### Processing Pipeline
 
 **Stage 1: Classification**
 - Quick yes/no: "Is this article about a data breach?"
 - Uses fewer tokens (~100-200 vs 1000+)
-- Filters out 40-60% of non-breach articles
-- Configurable confidence threshold (default: 0.7)
+- Filters out ~40-60% of non-breach articles before expensive extraction
+- Configurable confidence threshold (default: 0.6)
+- Set `ENABLE_CLASSIFICATION=False` to skip and process all articles
 
 **Stage 2: Full Extraction**
 - Only runs on articles classified as breaches
-- Extracts detailed structured data
-- Performs update detection
-- Writes to database
+- Extracts detailed structured data: company, severity, records affected, attack vector, CVEs, MITRE techniques, summary, lessons learned
 
-**Cost Savings**: Classification is ~90% cheaper than extraction, resulting in 40-60% overall cost reduction while maintaining accuracy.
+**Stage 3: Dedup (Fuzzy Pre-filter + AI)**
+- Fetches key fields (`id`, `company`, etc.) for **all** breaches in the database at run start
+- For each extracted article, fuzzy-matches the company name against the full database (threshold: 0.6)
+- If no candidates found: article is definitely a new breach - AI call skipped entirely (saves cost)
+- If candidates found: passes only those candidates to DeepSeek for `NEW_BREACH` / `GENUINE_UPDATE` / `DUPLICATE_SOURCE` classification
+- Newly written breaches are added to the stub list during the run, so same-company articles within one run are also caught
 
-**Configuration**: Set `ENABLE_CLASSIFICATION=False` in `.env` to disable and process all articles.
+**Stage 4: DB Write**
+- New breaches: inserted into `breaches`, `breach_tags`, `sources`
+- Genuine updates: appended to `breach_updates`
+- Duplicate sources: discarded, no DB write
 
 ## Setup
 
@@ -60,25 +67,25 @@ pip install -r requirements.txt
 
 ### 2. Configure Environment Variables
 
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and add your API keys:
+Create a `.env` file in the `scraper/` directory:
 
 ```bash
-# Required API Keys
+# Required
 DEEPSEEK_API_KEY=sk-your-deepseek-key
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_KEY=your-supabase-anon-key
 
-# Optional Configuration
-ENABLE_CLASSIFICATION=True  # Enable two-stage AI (recommended)
-CLASSIFICATION_CONFIDENCE_THRESHOLD=0.7  # Minimum confidence for breach classification
-ARTICLE_LOOKBACK_HOURS=48  # How far back to fetch articles
+# Optional (defaults shown)
+ENABLE_CLASSIFICATION=True
+CLASSIFICATION_CONFIDENCE_THRESHOLD=0.6
+ARTICLE_LOOKBACK_HOURS=48
+FUZZY_MATCH_THRESHOLD=0.85
+FUZZY_CANDIDATE_THRESHOLD=0.6
+MAX_FEED_WORKERS=10
+LOG_LEVEL=INFO
 ```
 
-### 3. Test the Scraper
+### 3. Run
 
 ```bash
 python main.py
@@ -92,6 +99,14 @@ python main.py
 python main.py
 ```
 
+### Audit the Database
+
+```bash
+python audit.py              # General audit
+python audit.py --duplicates # Flag potential duplicates
+python audit.py --csv        # Export to CSV
+```
+
 ### Schedule Daily Runs
 
 #### Linux/Mac (cron)
@@ -100,17 +115,16 @@ python main.py
 crontab -e
 ```
 
-Add line:
+Add:
 ```
 0 8 * * * cd /path/to/BreachBase/scraper && /path/to/venv/bin/python main.py >> logs/cron.log 2>&1
 ```
 
 #### Windows (Task Scheduler)
 
-1. Open Task Scheduler
-2. Create Basic Task
-3. Trigger: Daily at 8:00 AM
-4. Action: Start a program
+1. Open Task Scheduler -> Create Basic Task
+2. Trigger: Daily at 8:00 AM
+3. Action: Start a program
    - Program: `C:\path\to\venv\Scripts\python.exe`
    - Arguments: `main.py`
    - Start in: `C:\path\to\BreachBase\scraper`
@@ -119,70 +133,62 @@ Add line:
 
 ```
 scraper/
-├── main.py                 # Main orchestrator
-├── config.py               # Configuration & prompts
-├── feed_parser.py          # RSS feed fetching
-├── cache_manager.py        # Local caching
-├── ai_processor.py         # DeepSeek AI integration
-├── db_writer.py            # Supabase database writing
-├── requirements.txt        # Python dependencies
-├── .env.example            # Example environment variables
-├── .env                    # Your actual env vars (gitignored)
-├── cache/                  # Article cache
-│   ├── raw_2026-02-04.json
-│   └── processed_ids.txt
-└── logs/                   # Log files
-    ├── scraper_2026-02-04.log
-    └── errors_2026-02-04.log
++-- main.py                 # Main orchestrator
++-- config.py               # Configuration, prompts, env-overridable settings
++-- feed_parser.py          # RSS feed fetching and filtering
++-- cache_manager.py        # Local caching, processed URL tracking
++-- ai_processor.py         # DeepSeek AI integration
++-- db_writer.py            # Supabase database writing
++-- audit.py                # DB audit and duplicate detection tool
++-- requirements.txt        # Python dependencies
++-- .env                    # Your env vars (gitignored)
++-- cache/
+|   +-- raw_YYYY-MM-DD.json         # Raw article cache
+|   +-- processed_ids.txt           # Permanent log of processed article URLs
+|   +-- extraction_results_*.json   # AI extraction results for debugging
++-- logs/
+    +-- scraper_YYYY-MM-DD.log      # Full log (debug level)
+    +-- errors_YYYY-MM-DD.log       # Errors only
 ```
 
 ## Modules
 
 ### feed_parser.py
-Fetches and parses RSS feeds from 10 sources in parallel, filters recent articles (last 48 hours), and deduplicates by URL.
+Fetches and parses RSS feeds from 8 sources in parallel, filters recent articles (last 48 hours), and deduplicates by URL.
 
-**Key Functions:**
-- `fetch_all_feeds()` - Fetch from all sources
-- `filter_recent_articles()` - Filter by date
-- `deduplicate_by_url()` - Remove duplicates
+**Key functions:** `fetch_all_feeds()`, `filter_recent_articles()`, `deduplicate_by_url()`
 
 ### cache_manager.py
-Manages local file cache, tracks processed article URLs, and prevents duplicate processing.
+Manages local file cache, tracks processed article URLs (permanent, ever-growing `processed_ids.txt`), and prevents reprocessing the same URL across runs.
 
-**Key Functions:**
-- `get_new_articles()` - Filter already-processed
-- `cache_articles()` - Save raw articles
-- `save_processed_id()` - Mark as processed
+**Key functions:** `get_new_articles()`, `cache_articles()`, `save_processed_id()`
 
 ### ai_processor.py
-DeepSeek API integration for extracting structured breach data and detecting updates.
+DeepSeek API integration for classifying articles, extracting structured breach data, and detecting updates.
 
-**Key Functions:**
-- `extract_breach_data()` - Extract structured data
-- `detect_update()` - Identify if article is update
-- `call_api()` - API wrapper with retry logic
+**Key functions:** `classify_article()`, `extract_breach_data()`, `detect_update()`, `call_api()`
 
 ### db_writer.py
 Supabase database integration for writing breaches, updates, tags, and sources.
 
-**Key Functions:**
-- `write_new_breach()` - Insert new breach
-- `write_breach_update()` - Insert update
-- `get_existing_breaches()` - Fetch for matching
+**Key functions:** `write_new_breach()`, `write_breach_update()`, `get_all_breach_stubs()`
 
 ## Configuration
 
-Edit `config.py` to modify:
+All settings in `config.py` are overridable via environment variables. Key settings:
 
-- RSS feed sources
-- AI prompts for extraction
-- Retry limits and timeouts
-- Cache directory paths
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ARTICLE_LOOKBACK_HOURS` | 48 | How far back to fetch articles |
+| `FUZZY_CANDIDATE_THRESHOLD` | 0.6 | Min similarity to surface a breach as a dedup candidate |
+| `FUZZY_MATCH_THRESHOLD` | 0.85 | High-confidence match threshold |
+| `CLASSIFICATION_CONFIDENCE_THRESHOLD` | 0.6 | Min confidence to classify as breach |
+| `MAX_FEED_WORKERS` | 10 | Parallel RSS fetch threads |
+| `ENABLE_CLASSIFICATION` | True | Enable Stage 1 classification filter |
 
 ## Logging
 
-Logs are written to:
-- `logs/scraper_YYYY-MM-DD.log` - Full log
+- `logs/scraper_YYYY-MM-DD.log` - Full debug log
 - `logs/errors_YYYY-MM-DD.log` - Errors only
 - Console output during execution
 
@@ -191,48 +197,26 @@ Logs are written to:
 Each module has a `if __name__ == '__main__'` section for standalone testing:
 
 ```bash
-# Test RSS fetching
-python feed_parser.py
-
-# Test caching
-python cache_manager.py
-
-# Test AI extraction (requires DEEPSEEK_API_KEY)
-python ai_processor.py
-
-# Test database connection (requires SUPABASE credentials)
-python db_writer.py
+python feed_parser.py      # Test RSS fetching
+python cache_manager.py    # Test caching
+python ai_processor.py     # Test AI extraction (requires DEEPSEEK_API_KEY)
+python db_writer.py        # Test database connection (requires SUPABASE credentials)
 ```
 
 ## Troubleshooting
 
-### No articles fetched
-- Check internet connection
-- Verify RSS feed URLs are still valid
+**No articles fetched**
+- Check internet connection and verify RSS feed URLs are still valid
 - Check logs for specific feed errors
 
-### AI extraction fails
-- Verify DEEPSEEK_API_KEY is set correctly
+**AI extraction fails**
+- Verify `DEEPSEEK_API_KEY` is set correctly
 - Check DeepSeek API quota/limits
-- Review logs for API errors
 
-### Database errors
-- Verify SUPABASE_URL and SUPABASE_KEY
-- Check database schema matches enhanced_schema.sql
-- Ensure tables exist in Supabase
+**Database errors**
+- Verify `SUPABASE_URL` and `SUPABASE_KEY`
+- Check database schema matches `database/current_db.sql`
 
-### Duplicate processing
-- Check `cache/processed_ids.txt` exists
-- Verify file permissions
-- Check for concurrent runs
-
-
-## Future Enhancements
-
-- [ ] Full article text fetching (beyond RSS summary)
-- [ ] Additional non-English sources
-- [ ] Webhook notifications for critical breaches
-- [ ] Human review queue for low-confidence extractions
-- [ ] Duplicate breach merging
-- [ ] Source reliability scoring
-
+**Duplicate breaches appearing**
+- Check `cache/processed_ids.txt` exists and is readable
+- Run `python audit.py --duplicates` to identify existing duplicates

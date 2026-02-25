@@ -28,6 +28,7 @@ from config import (
     RSS_SOURCES,
     ARTICLE_LOOKBACK_HOURS,
     FUZZY_MATCH_THRESHOLD,
+    FUZZY_CANDIDATE_THRESHOLD,
     ENABLE_CLASSIFICATION,
     CLASSIFICATION_CONFIDENCE_THRESHOLD
 )
@@ -38,21 +39,25 @@ def _company_similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, a.lower().strip(), b.lower().strip()).ratio()
 
 
-def find_in_run_duplicate(company: str, existing_breaches: list) -> dict | None:
+def get_fuzzy_candidates(company: str, all_stubs: list) -> list:
     """
-    Check if a company name closely matches any breach already written in this
-    scraper run (identified by having no 'created_at' from the DB, i.e. appended
-    during the current run).  Returns the matching breach dict or None.
+    Return all breach stubs whose company name is similar enough to be a
+    candidate match for the given company name.
 
-    This guards against the case where two articles about the same breach are
-    fetched in the same run before either is stored in the DB, which means
-    detect_update() cannot catch the second one via database lookup.
+    Uses FUZZY_CANDIDATE_THRESHOLD (default 0.6) as a wide net — lower than
+    the high-confidence FUZZY_MATCH_THRESHOLD.  The returned candidates are
+    passed to the AI which makes the final NEW_BREACH / GENUINE_UPDATE /
+    DUPLICATE_SOURCE decision.
+
+    Covers the full database with no date or count limit, so even breaches
+    older than 90 days are never invisible to dedup.
     """
-    for breach in existing_breaches:
-        existing_company = breach.get('company') or ''
-        if existing_company and _company_similarity(company, existing_company) >= FUZZY_MATCH_THRESHOLD:
-            return breach
-    return None
+    if not company:
+        return []
+    return [
+        stub for stub in all_stubs
+        if _company_similarity(company, stub.get('company') or '') >= FUZZY_CANDIDATE_THRESHOLD
+    ]
 
 
 def setup_logging():
@@ -168,10 +173,10 @@ def main():
             logger.info("No new articles to process. Exiting.")
             return stats
 
-        # Fetch existing breaches for update detection
-        logger.info("\n[5/7] Fetching existing breaches from database...")
-        existing_breaches = db.get_existing_breaches(days=90)
-        logger.info(f"+ Loaded {len(existing_breaches)} existing breaches")
+        # Fetch all breach stubs for dedup pre-filter (no date limit)
+        logger.info("\n[5/7] Fetching all breach stubs from database for dedup...")
+        all_breach_stubs = db.get_all_breach_stubs()
+        logger.info(f"+ Loaded {len(all_breach_stubs)} breach stubs")
 
         # Process each article
         logger.info(f"\n[6/7] Processing {stats['articles_new']} articles...")
@@ -220,40 +225,38 @@ def main():
 
                 logger.info(f"  ✓ Extracted: {extracted.get('company', 'Unknown')} - {extracted.get('severity', 'unknown')} severity")
 
-                # Step 3: Detect if this is an update or new breach
-                logger.info("  -> Detecting if update to existing breach...")
+                # Stage 3: Fuzzy pre-filter then AI update detection
+                logger.info("  -> Stage 3: Dedup check...")
 
-                # Fast in-run fuzzy check: if we already wrote a breach for this
-                # company earlier in the same scraper run, skip the AI call and
-                # treat this article as an update immediately.  This prevents
-                # duplicates when two articles about the same company arrive in
-                # the same run before either has been persisted to the DB.
                 company_name = extracted.get('company', '')
-                in_run_match = find_in_run_duplicate(company_name, existing_breaches) if company_name else None
+                candidates = get_fuzzy_candidates(company_name, all_breach_stubs)
 
-                if in_run_match:
-                    logger.info(
-                        f"  + In-run duplicate detected: '{company_name}' matches "
-                        f"'{in_run_match.get('company')}' (id: {in_run_match.get('id')}) "
-                        f"- forcing as UPDATE without AI call"
-                    )
-                    update_check = {
-                        'is_update': True,
-                        'related_breach_id': in_run_match['id'],
-                        'update_type': 'new_info',
-                        'confidence': 1.0
-                    }
-                else:
-                    update_check = ai_processor.detect_update(article, existing_breaches)
-
-                if not update_check:
-                    logger.warning("  X Update detection failed, treating as new breach")
+                if not candidates:
+                    # No plausible match anywhere in the full database - skip AI call
+                    logger.info("  + No fuzzy candidates found - treating as new breach")
                     update_check = {
                         'is_update': False,
+                        'is_duplicate_source': False,
                         'related_breach_id': None,
                         'update_type': None,
-                        'confidence': 0.5
+                        'confidence': 1.0,
+                        'reasoning': 'No company name match found in full database'
                     }
+                else:
+                    logger.info(f"  + {len(candidates)} fuzzy candidate(s) found - asking AI to classify...")
+                    candidate_ids = [c['id'] for c in candidates]
+                    candidate_details = db.get_breaches_by_ids(candidate_ids)
+                    update_check = ai_processor.detect_update(article, candidate_details)
+
+                    if not update_check:
+                        logger.warning("  X Update detection failed, treating as new breach")
+                        update_check = {
+                            'is_update': False,
+                            'is_duplicate_source': False,
+                            'related_breach_id': None,
+                            'update_type': None,
+                            'confidence': 0.5
+                        }
 
                 # Step 4: Write to database
                 is_duplicate = update_check.get('is_duplicate_source', False)
@@ -285,7 +288,7 @@ def main():
                         stats['errors'] += 1
 
                 elif is_duplicate:
-                    # Different source reporting the same facts — discard, no DB write
+                    # Different source reporting the same facts - discard, no DB write
                     logger.info(
                         f"  ~ Duplicate source detected (confidence: {update_check['confidence']:.2%}): "
                         f"{update_check.get('reasoning', '')} -- skipping DB write"
@@ -303,15 +306,13 @@ def main():
                         logger.info(f"  + Breach created: {breach_id}")
                         stats['breaches_created'] += 1
 
-                        # Add to existing breaches list for future update detection in this run
-                        existing_breaches.append({
+                        # Add to stub list so within-run articles about the same
+                        # company are caught by the pre-filter on subsequent iterations.
+                        # Only id + company needed - full details are fetched from DB
+                        # via get_breaches_by_ids() if this becomes a candidate.
+                        all_breach_stubs.append({
                             'id': breach_id,
                             'company': extracted.get('company'),
-                            'discovery_date': extracted.get('discovery_date'),
-                            'records_affected': extracted.get('records_affected'),
-                            'attack_vector': extracted.get('attack_vector'),
-                            'summary': extracted.get('summary'),
-                            'created_at': datetime.now().isoformat()
                         })
                     else:
                         logger.error("  X Failed to write breach")

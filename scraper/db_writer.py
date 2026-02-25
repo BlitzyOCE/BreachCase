@@ -60,6 +60,71 @@ class DatabaseWriter:
             logger.error(f"Error fetching existing breaches: {e}")
             return []
 
+    def get_all_breach_stubs(self) -> List[Dict]:
+        """
+        Fetch id + company for ALL breaches in the database (no date filter).
+
+        Intentionally lightweight - only the two fields needed for fuzzy
+        company-name pre-filtering. Full details for matched candidates are
+        fetched separately via get_breaches_by_ids().
+
+        Returns:
+            List of dicts with id and company only.
+        """
+        all_stubs = []
+        page_size = 1000
+        offset = 0
+
+        try:
+            while True:
+                response = (
+                    self.client
+                    .from_('breaches')
+                    .select('id, company')
+                    .range(offset, offset + page_size - 1)
+                    .execute()
+                )
+                batch = response.data or []
+                all_stubs.extend(batch)
+                if len(batch) < page_size:
+                    break
+                offset += page_size
+
+            logger.info(f"Fetched {len(all_stubs)} breach stubs for dedup pre-filter")
+            return all_stubs
+
+        except Exception as e:
+            logger.error(f"Error fetching breach stubs: {e}")
+            return []
+
+    def get_breaches_by_ids(self, ids: List[str]) -> List[Dict]:
+        """
+        Fetch full dedup context fields for a specific list of breach IDs.
+
+        Called after fuzzy pre-filtering to retrieve only the matched
+        candidates before passing them to the AI update detection prompt.
+
+        Returns:
+            List of breach dicts with id, company, discovery_date,
+            records_affected, attack_vector, summary.
+        """
+        if not ids:
+            return []
+
+        try:
+            response = (
+                self.client
+                .from_('breaches')
+                .select('id, company, discovery_date, records_affected, attack_vector, summary')
+                .in_('id', ids)
+                .execute()
+            )
+            return response.data or []
+
+        except Exception as e:
+            logger.error(f"Error fetching breaches by ids: {e}")
+            return []
+
     def write_new_breach(self, breach_data: Dict, article: Dict) -> Optional[str]:
         """
         Write a new breach to the database.
