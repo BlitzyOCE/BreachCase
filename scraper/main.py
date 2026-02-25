@@ -10,7 +10,10 @@ Daily scraper that:
 
 import io
 import logging
+import re
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -30,7 +33,8 @@ from config import (
     FUZZY_MATCH_THRESHOLD,
     FUZZY_CANDIDATE_THRESHOLD,
     ENABLE_CLASSIFICATION,
-    CLASSIFICATION_CONFIDENCE_THRESHOLD
+    CLASSIFICATION_CONFIDENCE_THRESHOLD,
+    AI_CONCURRENCY,
 )
 
 
@@ -39,25 +43,103 @@ def _company_similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, a.lower().strip(), b.lower().strip()).ratio()
 
 
-def get_fuzzy_candidates(company: str, all_stubs: list) -> list:
+_TITLE_STOPWORDS = {
+    'the', 'and', 'for', 'data', 'breach', 'attack', 'cyber',
+    'security', 'incident', 'leak', 'hack', 'exposed', 'million',
+    'records', 'company', 'group', '2025', '2026'
+}
+
+# Maps national adjectives to their canonical country noun.
+# Used in _titles_share_keyword so "French Government" and "France Ministry of Economy"
+# both normalise to the same country token before overlap is tested.
+_DEMONYM_TO_COUNTRY = {
+    'french': 'france',
+    'german': 'germany',
+    'british': 'uk',
+    'american': 'usa',
+    'italian': 'italy',
+    'spanish': 'spain',
+    'dutch': 'netherlands',
+    'australian': 'australia',
+    'canadian': 'canada',
+    'japanese': 'japan',
+    'chinese': 'china',
+    'russian': 'russia',
+    'korean': 'korea',
+    'indian': 'india',
+    'brazilian': 'brazil',
+    'swedish': 'sweden',
+    'norwegian': 'norway',
+    'danish': 'denmark',
+    'polish': 'poland',
+    'turkish': 'turkey',
+    'israeli': 'israel',
+    'iranian': 'iran',
+    'mexican': 'mexico',
+    'saudi': 'saudi',
+    'emirati': 'uae',
+    'nigerian': 'nigeria',
+    'egyptian': 'egypt',
+    'indonesian': 'indonesia',
+    'pakistani': 'pakistan',
+    'thai': 'thailand',
+    'singaporean': 'singapore',
+    'malaysian': 'malaysia',
+    'vietnamese': 'vietnam',
+    'filipino': 'philippines',
+}
+
+
+def _titles_share_keyword(title_a: str, title_b: str) -> bool:
     """
-    Return all breach stubs whose company name is similar enough to be a
-    candidate match for the given company name.
+    Return True if both titles share at least one significant keyword
+    (3+ chars, not a stopword).
 
-    Uses FUZZY_CANDIDATE_THRESHOLD (default 0.6) as a wide net — lower than
-    the high-confidence FUZZY_MATCH_THRESHOLD.  The returned candidates are
-    passed to the AI which makes the final NEW_BREACH / GENUINE_UPDATE /
-    DUPLICATE_SOURCE decision.
+    National adjectives are normalised to their country noun before comparison
+    so 'French Government' and 'France Ministry of Economy' share 'france'.
 
-    Covers the full database with no date or count limit, so even breaches
-    older than 90 days are never invisible to dedup.
+    Used as a fallback when company-name fuzzy match misses same-breach
+    articles with different organisation framing (e.g. 'Ttareungyi' vs
+    'Seoul Metropolitan Government').
+    """
+    def _extract_words(title: str):
+        raw = {w.lower() for w in re.split(r'\W+', title) if len(w) >= 3 and w.lower() not in _TITLE_STOPWORDS}
+        return {_DEMONYM_TO_COUNTRY.get(w, w) for w in raw}
+
+    words_a = _extract_words(title_a)
+    words_b = _extract_words(title_b)
+    return bool(words_a & words_b)
+
+
+def get_fuzzy_candidates(company: str, extracted_title: str, all_stubs: list) -> list:
+    """
+    Return all breach stubs that are plausible candidates for the same incident.
+
+    Two signals (either fires = stub included):
+      1. Company name fuzzy similarity >= FUZZY_CANDIDATE_THRESHOLD (primary)
+      2. Title keyword overlap (fallback for same org with different naming)
+
+    The returned candidates are passed to the AI which makes the final
+    NEW_BREACH / GENUINE_UPDATE / DUPLICATE_SOURCE decision, so false
+    positives from the broader candidate set are acceptable.
+
+    Covers the full database with no date or count limit.
     """
     if not company:
         return []
-    return [
-        stub for stub in all_stubs
-        if _company_similarity(company, stub.get('company') or '') >= FUZZY_CANDIDATE_THRESHOLD
-    ]
+    candidates = []
+    for stub in all_stubs:
+        # Signal 1: company name fuzzy match (existing)
+        if _company_similarity(company, stub.get('company') or '') >= FUZZY_CANDIDATE_THRESHOLD:
+            candidates.append(stub)
+            continue
+
+        # Signal 2: title keyword overlap (fallback)
+        if extracted_title and stub.get('title'):
+            if _titles_share_keyword(extracted_title, stub['title']):
+                candidates.append(stub)
+
+    return candidates
 
 
 def _compute_match_signals(extracted: dict, candidates: list) -> dict:
@@ -103,6 +185,36 @@ def _compute_match_signals(extracted: dict, candidates: list) -> dict:
         }
 
     return signals
+
+
+def _classify_and_extract(article, ai_processor):
+    """
+    Run Stage 1 (classify) and Stage 2 (extract) for a single article.
+
+    Designed to be called from a thread pool - reads no shared mutable state.
+
+    Returns a 3-tuple:
+      (article, classification, extracted)
+    Where:
+      - classification is the classify result dict, None if classification
+        is disabled, or 'error' on exception.
+      - extracted is the extraction result dict, None if the article was
+        classified as a non-breach or if extraction failed.
+      - If classification is 'error', extracted is the Exception instance.
+    """
+    try:
+        if ENABLE_CLASSIFICATION:
+            classification = ai_processor.classify_article(article)
+            if (not classification['is_breach']
+                    or classification['confidence'] < CLASSIFICATION_CONFIDENCE_THRESHOLD):
+                return (article, classification, None)
+        else:
+            classification = None
+
+        extracted = ai_processor.extract_breach_data(article)
+        return (article, classification, extracted)
+    except Exception as exc:
+        return (article, 'error', exc)
 
 
 def setup_logging():
@@ -223,45 +335,72 @@ def main():
         all_breach_stubs = db.get_all_breach_stubs()
         logger.info(f"+ Loaded {len(all_breach_stubs)} breach stubs")
 
-        # Process each article
+        # Process each article - two phases:
+        #   Phase A (parallel): classify + extract (expensive AI calls, no shared state)
+        #   Phase B (sequential): dedup + DB write (must be sequential to keep within-run
+        #                         dedup correct via all_breach_stubs updates)
         logger.info(f"\n[6/7] Processing {stats['articles_new']} articles...")
+        logger.info(f"  Phase A: classify + extract ({AI_CONCURRENCY} parallel workers)")
         logger.info("-" * 80)
 
         extraction_results = []
 
-        for idx, article in enumerate(new_articles, 1):
-            logger.info(f"\n[{idx}/{stats['articles_new']}] Processing: {article['title'][:80]}...")
+        # --- Phase A: parallel classify + extract ---
+        phase_a_results = []
+        phase_a_lock = threading.Lock()
+        phase_a_done = [0]
+
+        def _on_future_done(future):
+            result = future.result()
+            article_title = result[0]['title'][:60]
+            with phase_a_lock:
+                phase_a_done[0] += 1
+                n = phase_a_done[0]
+            logger.info(f"  [Phase A {n}/{stats['articles_new']}] {article_title}...")
+
+        with ThreadPoolExecutor(max_workers=AI_CONCURRENCY) as executor:
+            futures = {
+                executor.submit(_classify_and_extract, article, ai_processor): article
+                for article in new_articles
+            }
+            for future in as_completed(futures):
+                _on_future_done(future)
+                phase_a_results.append(future.result())
+
+        logger.info(f"  Phase A complete: {len(phase_a_results)} articles processed")
+        logger.info(f"\n  Phase B: dedup + DB write (sequential)")
+        logger.info("-" * 80)
+
+        # --- Phase B: sequential dedup + write ---
+        processed_urls = []
+
+        for idx, (article, classification, extracted) in enumerate(phase_a_results, 1):
+            logger.info(f"\n[{idx}/{stats['articles_new']}] {article['title'][:80]}...")
             logger.info(f"Source: {article['source_name']}")
             logger.info(f"URL: {article['url']}")
 
             try:
-                # Stage 1: Is this an article about data breach or not?
-                if ENABLE_CLASSIFICATION:
-                    logger.info("  -> Stage 1: Classifying article...")
-                    classification = ai_processor.classify_article(article)
+                # Handle Phase A error
+                if classification == 'error':
+                    logger.error(f"  X Phase A error: {extracted}")
+                    stats['errors'] += 1
+                    continue
 
+                # Handle non-breach classification result
+                if ENABLE_CLASSIFICATION and extracted is None:
+                    conf = classification['confidence']
                     if not classification['is_breach']:
-                        logger.info(f"  X Not a breach (confidence: {classification['confidence']:.2%})")
-                        logger.info(f"  Reason: {classification['reasoning']}")
-                        stats['classified_as_non_breach'] += 1
-                        stats['skipped'] += 1
-                        cache.save_processed_id(article['url'])
-                        continue
+                        logger.info(f"  X Not a breach (confidence: {conf:.2%})")
+                    else:
+                        logger.info(f"  X Low confidence breach classification ({conf:.2%} < {CLASSIFICATION_CONFIDENCE_THRESHOLD:.2%})")
+                    logger.info(f"  Reason: {classification['reasoning']}")
+                    stats['classified_as_non_breach'] += 1
+                    stats['skipped'] += 1
+                    continue
 
-                    if classification['confidence'] < CLASSIFICATION_CONFIDENCE_THRESHOLD:
-                        logger.info(f"  X Low confidence breach classification ({classification['confidence']:.2%} < {CLASSIFICATION_CONFIDENCE_THRESHOLD:.2%})")
-                        logger.info(f"  Reason: {classification['reasoning']}")
-                        stats['classified_as_non_breach'] += 1
-                        stats['skipped'] += 1
-                        cache.save_processed_id(article['url'])
-                        continue
-
+                if ENABLE_CLASSIFICATION:
                     logger.info(f"  + Classified as BREACH (confidence: {classification['confidence']:.2%})")
                     stats['classified_as_breach'] += 1
-
-                # Stage 2: Extract breach data using AI
-                logger.info("  -> Stage 2: Extracting breach data with AI...")
-                extracted = ai_processor.extract_breach_data(article)
 
                 if not extracted:
                     logger.warning("  X AI extraction failed, skipping article")
@@ -274,7 +413,7 @@ def main():
                 logger.info("  -> Stage 3: Dedup check...")
 
                 company_name = extracted.get('company', '')
-                candidates = get_fuzzy_candidates(company_name, all_breach_stubs)
+                candidates = get_fuzzy_candidates(company_name, extracted.get('title', ''), all_breach_stubs)
 
                 if not candidates:
                     # No plausible match anywhere in the full database - skip AI call
@@ -304,7 +443,7 @@ def main():
                             'confidence': 0.5
                         }
 
-                # Step 4: Write to database
+                # Stage 4: Write to database
                 is_duplicate = update_check.get('is_duplicate_source', False)
                 is_genuine_update = (
                     update_check['is_update']
@@ -360,13 +499,11 @@ def main():
                         all_breach_stubs.append({
                             'id': breach_id,
                             'company': extracted.get('company'),
+                            'title': extracted.get('title'),
                         })
                     else:
                         logger.error("  X Failed to write breach")
                         stats['errors'] += 1
-
-                # Mark as processed
-                cache.save_processed_id(article['url'])
 
                 # Save extraction result for debugging
                 extraction_results.append({
@@ -381,7 +518,12 @@ def main():
                 logger.error(f"  X Error processing article: {e}")
                 logger.exception(e)
                 stats['errors'] += 1
-                continue
+
+            finally:
+                processed_urls.append(article['url'])
+
+        # Batch-write all processed URLs to cache in one file operation
+        cache.save_processed_ids_batch(processed_urls)
 
         # Cache extraction results
         logger.info("\n[7/7] Caching extraction results...")

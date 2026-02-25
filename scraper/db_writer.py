@@ -62,14 +62,15 @@ class DatabaseWriter:
 
     def get_all_breach_stubs(self) -> List[Dict]:
         """
-        Fetch id + company for ALL breaches in the database (no date filter).
+        Fetch id, company, title, and disclosure_date for ALL breaches in the
+        database (no date filter).
 
-        Intentionally lightweight - only the two fields needed for fuzzy
-        company-name pre-filtering. Full details for matched candidates are
-        fetched separately via get_breaches_by_ids().
+        Used for fuzzy pre-filtering: company name similarity (primary signal)
+        and title keyword overlap (fallback signal). Full details for matched
+        candidates are fetched separately via get_breaches_by_ids().
 
         Returns:
-            List of dicts with id and company only.
+            List of dicts with id, company, title, disclosure_date.
         """
         all_stubs = []
         page_size = 1000
@@ -80,7 +81,7 @@ class DatabaseWriter:
                 response = (
                     self.client
                     .from_('breaches')
-                    .select('id, company')
+                    .select('id, company, title, disclosure_date')
                     .range(offset, offset + page_size - 1)
                     .execute()
                 )

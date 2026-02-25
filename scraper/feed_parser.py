@@ -21,7 +21,7 @@ HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
     'Accept': 'application/rss+xml, application/xml, text/xml, application/atom+xml, */*',
     'Accept-Language': 'en-US,en;q=0.9',
-    'Accept-Encoding': 'gzip, deflate, br',
+    'Accept-Encoding': 'gzip, deflate',
     'DNT': '1',
     'Connection': 'keep-alive',
     'Upgrade-Insecure-Requests': '1'
@@ -76,6 +76,7 @@ def fetch_feed(source_key: str, source_config: Dict) -> List[Dict]:
 
         if feed.bozo:
             logger.warning(f"Feed {source_name} has parsing issues: {feed.bozo_exception}")
+            logger.debug(f"  Response content preview: {response.content[:200]}")
 
         # Extract articles
         for entry in feed.entries:
@@ -137,10 +138,11 @@ def parse_article(entry, source_key: str, source_name: str) -> Optional[Dict]:
     if not published_date and 'updated' in entry:
         published_date = parse_date(entry.updated)
 
-    # If still no date, use current time
+    # If still no date, return None so filter_recent_articles() skips this article.
+    # Using datetime.now() as a fallback would cause every dateless article to appear
+    # "just published", flooding processing on feeds that omit dates (e.g. DataBreachToday).
     if not published_date:
-        published_date = datetime.now()
-        logger.warning(f"No date found for article '{title}', using current time")
+        logger.debug(f"No date found for article '{title}' from {source_name} - will be excluded from recent filter")
 
     # Extract summary/description
     summary = ''

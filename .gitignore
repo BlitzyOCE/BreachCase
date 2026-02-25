@@ -14,6 +14,11 @@ ENV/
 .eggs/
 *.manifest
 *.spec
+# Testing
+.pytest_cache/
+.coverage
+*.coverage
+htmlcov/
 
 # ===========================================
 # Environment & Secrets
@@ -46,6 +51,7 @@ scraper/audit_export/
 Thumbs.db
 Desktop.ini
 *.stackdump
+*.log
 
 # ===========================================
 # Claude Code (keep commands/, ignore rest)
@@ -58,3 +64,26 @@ Desktop.ini
 # ===========================================
 # docs/ideas.md
 # docs/start.md
+
+# ===========================================
+# All Markdown Files (ignore all except README.md)
+# ===========================================
+*.md
+!/README.md
+!/frontend/README.md
+!/scraper/README.md
+
+# ===========================================
+# Internal Markdown Documentation (private)
+# ===========================================
+# Directory-specific patterns
+docs/**/*.md
+database/**/*.md
+.claude/**/*.md
+frontend/docs/**/*.md
+# Generic patterns for any docs/database directories
+**/docs/**/*.md
+**/database/**/*.md
+
+# Specific root files
+CLAUDE.md

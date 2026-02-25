@@ -20,7 +20,7 @@ LOGS_DIR = BASE_DIR / "logs"
 CACHE_DIR.mkdir(exist_ok=True)
 LOGS_DIR.mkdir(exist_ok=True)
 
-# RSS Feed Sources (21 sources)
+# RSS Feed Sources (19 sources)
 RSS_SOURCES = {
     # --- Original 8 sources ---
     'bleepingcomputer': {
@@ -74,19 +74,14 @@ RSS_SOURCES = {
         'url': 'https://therecord.media/feed',
         'language': 'en'
     },
-    'scmagazine_threats': {
-        'name': 'SC Magazine Threats',
-        'url': 'https://www.scmagazine.com/feed/topic/threats',
+    'zdnet_security': {
+        'name': 'ZDNet Security',
+        'url': 'https://www.zdnet.com/topic/security/rss.xml',
         'language': 'en'
     },
     'cyberscoop': {
         'name': 'CyberScoop',
         'url': 'https://cyberscoop.com/feed/',
-        'language': 'en'
-    },
-    'techcrunch_security': {
-        'name': 'TechCrunch Security',
-        'url': 'https://techcrunch.com/category/security/feed/',
         'language': 'en'
     },
     'infosecurity_mag': {
@@ -97,11 +92,6 @@ RSS_SOURCES = {
     'globenewswire_cyber': {
         'name': 'GlobeNewswire Cybersecurity',
         'url': 'https://www.globenewswire.com/RssFeed/subjectcode/25-Cybersecurity/feedTitle/GlobeNewswire',
-        'language': 'en'
-    },
-    'securityweek': {
-        'name': 'SecurityWeek',
-        'url': 'https://www.securityweek.com/feed/',
         'language': 'en'
     },
     'darkreading': {
@@ -148,6 +138,7 @@ MAX_RETRIES = int(os.getenv('MAX_RETRIES', '3'))
 RETRY_DELAY = int(os.getenv('RETRY_DELAY', '5'))  # seconds
 REQUEST_TIMEOUT = int(os.getenv('REQUEST_TIMEOUT', '30'))  # seconds
 MAX_FEED_WORKERS = int(os.getenv('MAX_FEED_WORKERS', '10'))  # parallel RSS fetch threads
+AI_CONCURRENCY = int(os.getenv('AI_CONCURRENCY', '5'))  # parallel classify+extract workers
 MAX_EXISTING_BREACHES_FETCH = int(os.getenv('MAX_EXISTING_BREACHES_FETCH', '100'))  # DB fetch cap
 MAX_EXISTING_BREACHES_CONTEXT = int(os.getenv('MAX_EXISTING_BREACHES_CONTEXT', '50'))  # AI prompt context cap
 FUZZY_MATCH_THRESHOLD = float(os.getenv('FUZZY_MATCH_THRESHOLD', '0.85'))  # high-confidence company match
@@ -201,7 +192,7 @@ Today's Date: {today}
 Extract the following information in JSON format:
 
 {{
-  "company": "Name of the breached or affected organization. Infer from context if not explicitly stated (e.g., 'Microsoft' for a Microsoft Outlook add-in attack, 'US Government' for a campaign targeting US federal agencies). Use null ONLY if no organization can reasonably be identified.",
+  "company": "Name of the breached or affected organization. Always use the country's English noun form, never the adjectival form: write 'France Ministry of Economy' not 'French Ministry of Economy'; 'Germany Federal Office' not 'German Federal Office'; 'United Kingdom Government' not 'British Government'. For national governments with no specific named agency, use the pattern 'CountryName Government' (e.g., 'France Government', 'United Kingdom Government'). Infer from context if not explicitly stated (e.g., 'Microsoft' for a Microsoft Outlook add-in attack, 'United States Government' for a campaign targeting US federal agencies). Use null ONLY if no organization can reasonably be identified.",
   "title": "Concise, descriptive breach headline (e.g., 'Qantas 2025 Customer Data Breach', 'Instagram 17M Profile Scraping Incident'). Must include company name, year, and nature of breach. Max 80 chars.",
   "industry": "Industry sector (e.g., healthcare, finance, retail, technology, government, education, null if unknown)",
   "country": "Country where the breached organization is headquartered or operates (ISO country name, null if unknown)",
@@ -216,8 +207,8 @@ Extract the following information in JSON format:
   "severity": "One of: low|medium|high|critical based on impact (null if cannot determine)",
   "cve_references": ["Array of CVE IDs mentioned, e.g., CVE-2024-1234"],
   "mitre_attack_techniques": ["Array of MITRE ATT&CK technique IDs if mentioned, e.g., T1078"],
-  "summary": "Factual, journalistic summary of the breach. 2-3 paragraphs separated by \\n\\n, 3-5 sentences each. Write only confirmed facts from the article - do not speculate or editorialize. Paragraph 1: What happened - name the organization, when the incident occurred, and the scale (records/users affected). Paragraph 2: What was exposed and how - specific data types compromised, the attack method or entry point, and any relevant technical detail or timeline. Paragraph 3 (only include if the article explicitly states one of these): confirmed regulatory action, lawsuit filed, ransom paid, notification to affected users, or service impact. If none of these are present in the article, omit the third paragraph entirely. Do NOT write generic statements like 'this breach highlights the importance of...', 'organizations should...', 'this serves as a reminder...', or any other security advice or lessons-learned commentary. No speculation about what the company could have done better.",
-  "lessons_learned": "Brief analysis of what security controls failed and recommendations (null if cannot determine)"
+  "summary": "Breach intelligence summary written for security practitioners (CISO/SOC audience). 2-3 paragraphs separated by \\n\\n, 3-5 sentences each. Paragraph 1 (Incident scope): State the organization and sector, confirmed timeline (discovery and/or disclosure date if known, including any gap between the two), and quantified exposure - record count, affected user population, or impacted systems. Paragraph 2 (Attack detail): Describe the confirmed attack chain - initial access vector, exploitation technique (cite CVE if stated), affected infrastructure or systems, and exfiltrated data types with specificity (e.g. 'bcrypt-hashed passwords and plaintext email addresses' not 'login credentials'; 'full payment card data including CVV' not 'financial data'; 'Social Security numbers, dates of birth, and home addresses' not 'personal information'). If a threat actor or ransomware group is attributed, include name and any known TTPs here. Paragraph 3 (Post-incident, omit entirely if not in article): Confirmed developments only - regulatory body and statute cited, litigation jurisdiction and class size if stated, ransom paid with amount if known, breach notification status, or confirmed containment or remediation milestone. Tone: technical, precise, neutral, active voice. Do not use journalistic attribution ('the company stated', 'according to reports', 'sources say'). Do not include security recommendations, lessons-learned, or editorial commentary of any kind.",
+  "lessons_learned": "2-3 sentences. Ground your analysis in the specific facts of this breach - the company, its industry, scale, and the confirmed attack details - and apply them to the security control failures they imply. Be specific to this case, not generic. Null if insufficient detail."
 }}
 
 EXTRACTION GUIDELINES:
