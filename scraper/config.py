@@ -287,7 +287,7 @@ Return JSON only:
   "is_duplicate_source": true if classification is DUPLICATE_SOURCE, false otherwise,
   "related_breach_id": "UUID of the matching breach from the list above, or null if NEW_BREACH",
   "update_type": "One of: new_info|class_action|regulatory_fine|remediation|resolution|investigation|null",
-  "update_summary": "1-2 sentence description of what specifically is new (e.g. 'Record count revised from 5M to 8.2M after forensic investigation.' or 'FTC opened a formal investigation.'). Null if classification is DUPLICATE_SOURCE or NEW_BREACH.",
+  "update_summary": "1-2 sentence description of what specifically is new, written as a direct factual statement (e.g. 'Record count revised from 5M to 8.2M after forensic investigation.' or 'FTC opened a formal investigation.'). Do NOT start with 'Article provides' or 'Article reports' - state the facts directly. Null if classification is DUPLICATE_SOURCE or NEW_BREACH.",
   "confidence": 0.0 to 1.0 confidence score,
   "reasoning": "One sentence explanation citing the specific signal that drove your classification"
 }}

@@ -31,7 +31,7 @@ export function BreachTimeline({ updates }: BreachTimelineProps) {
   return (
     <section>
       <h2 className="text-xl font-semibold tracking-tight">
-        Incident Timeline
+        Updates
       </h2>
       <div className="mt-4 space-y-0">
         {updates.map((update, index) => {
