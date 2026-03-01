@@ -33,12 +33,6 @@ export default async function AboutPage() {
           automatically aggregates, analyzes, and tracks cybersecurity incidents
           from across the web.
         </p>
-        <p>
-          Unlike traditional breach databases that only catalog incidents,
-          BreachCase treats breaches as <strong>living stories</strong> —
-          continuously updating as new information emerges, regulatory actions
-          are taken, and legal consequences unfold.
-        </p>
       </div>
 
       <Separator className="my-8" />
@@ -54,8 +48,8 @@ export default async function AboutPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            RSS feeds from 8 leading cybersecurity news sources are monitored
-            daily for new breach reports.
+            RSS feeds from {RSS_SOURCES.length} leading cybersecurity news
+            sources are monitored daily for new breach reports.
           </CardContent>
         </Card>
         <Card>
@@ -103,16 +97,16 @@ export default async function AboutPage() {
       <p className="mt-3 text-sm text-muted-foreground">
         Breach intelligence is aggregated from leading cybersecurity news sources and feeds:
       </p>
-      <ul className="mt-4 space-y-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         {RSS_SOURCES.map((source) => (
-          <li
+          <span
             key={source.name}
-            className="rounded-md px-2 py-1.5 text-sm text-muted-foreground"
+            className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground"
           >
             {source.name}
-          </li>
+          </span>
         ))}
-      </ul>
+      </div>
 
       <Separator className="my-8" />
 
